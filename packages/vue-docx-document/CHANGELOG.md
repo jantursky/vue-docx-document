@@ -16,6 +16,6 @@ All notable changes to `vue-docx-document` are listed here. The format follows [
 
 - First release.
 
-[Unreleased]: https://github.com/jantursky/vue-docx-document/compare/v1.0.1...HEAD
-[1.0.1]: https://github.com/jantursky/vue-docx-document/compare/v1.0.0...v1.0.1
-[1.0.0]: https://github.com/jantursky/vue-docx-document/releases/tag/v1.0.0
+[Unreleased]: https://github.com/jantursky/vue-docx-document/compare/1.0.1...HEAD
+[1.0.1]: https://github.com/jantursky/vue-docx-document/compare/1.0.0...1.0.1
+[1.0.0]: https://github.com/jantursky/vue-docx-document/releases/tag/1.0.0

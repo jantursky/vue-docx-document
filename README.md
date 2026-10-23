@@ -117,8 +117,8 @@ The browser tests need Playwright's engines once per machine: `bunx playwright i
 4. Tag the commit and push the tag:
 
    ```sh
-   git tag v1.1.0
-   git push origin v1.1.0
+   git tag 1.1.0
+   git push origin 1.1.0
    ```
 
    `.github/workflows/release.yml` checks that the tag matches the version, runs every test suite, publishes to npm with [provenance](https://docs.npmjs.com/generating-provenance-statements), and creates a GitHub release from the changelog section.
