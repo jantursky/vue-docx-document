@@ -8,6 +8,22 @@
 
 Create Word (.docx) files with Vue 3 components. This repository holds the library, a demo app and the docs site.
 
+[![The demo's overview: a hero with a HelloDocument.vue sample and the install command](.github/assets/demo-overview.png)](https://vue-docx-document.vercel.app)
+
+## Screenshots
+
+A document component and the page that drives it. The form edits reactive data, the preview redraws, and **Download DOCX** writes the Word file:
+
+![The Invoice example: a form with customer, number and line items next to a live page preview](.github/assets/example-invoice.png)
+
+The component behind it is a regular Vue single-file component built from `<Document>`, `<Section>`, `<Paragraph>` and `<Table>`:
+
+![The source of InvoiceDocument.vue, as shown by the demo's View source button](.github/assets/example-invoice-source.png)
+
+| [Invoice generator](https://vue-docx-document.vercel.app/#generator)                                                                               | [Contract generator](https://vue-docx-document.vercel.app/#contract)                                                                                                 |
+| -------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ![The invoice generator: invoice details on the left, the rendered invoice with a payment QR code on the right](.github/assets/demo-generator.png) | ![The contract generator: agreement and party details on the left, the services agreement with its table of contents on the right](.github/assets/demo-contract.png) |
+
 | folder                       | what it is                                                                                        |
 | ---------------------------- | ------------------------------------------------------------------------------------------------- |
 | `packages/vue-docx-document` | The library, published to npm. Its [README](packages/vue-docx-document/README.md) covers the API. |

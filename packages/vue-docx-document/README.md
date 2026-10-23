@@ -10,6 +10,8 @@ Create Word files with Vue 3 components. Write `<Document>`, `<Section>`, `<Para
 
 Under the hood it's a custom Vue renderer (`createRenderer`) on top of [docx](https://github.com/dolanmiu/docx). Instead of building `new Paragraph({ children: [new TextRun(…)] })` by hand, you write a template, and reactive data re-renders the document.
 
+[![A Vue component on the left, the live preview of the Word page it renders on the right](https://raw.githubusercontent.com/jantursky/vue-docx-document/main/.github/assets/example-invoice.png)](https://vue-docx-document.vercel.app)
+
 ## Install
 
 ```sh

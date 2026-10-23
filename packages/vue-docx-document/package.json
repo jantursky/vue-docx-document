@@ -1,6 +1,6 @@
 {
   "name": "vue-docx-document",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Create Word (.docx) files with Vue 3 components: a custom Vue renderer on top of docx, for the browser and Node, with a live HTML preview.",
   "license": "MIT",
   "author": {

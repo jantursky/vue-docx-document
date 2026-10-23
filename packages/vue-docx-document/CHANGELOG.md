@@ -4,11 +4,18 @@ All notable changes to `vue-docx-document` are listed here. The format follows [
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-10-23
+
+### Changed
+
+- The README shows a screenshot of an example and its live preview, and links it to the demo.
+
 ## [1.0.0] - 2026-10-23
 
 ### Added
 
 - First release.
 
-[Unreleased]: https://github.com/jantursky/vue-docx-document/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/jantursky/vue-docx-document/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/jantursky/vue-docx-document/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/jantursky/vue-docx-document/releases/tag/v1.0.0
