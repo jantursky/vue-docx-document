@@ -1,0 +1,55 @@
+---
+title: Composables
+description: Options and return values of useDocx and useDocxModel.
+---
+
+Both composables mount the document with the docx renderer and run again whenever reactive state it reads changes. Call them in `setup()` or inside an `effectScope`. In a component, the first run waits for `onMounted`, so server-side rendering never starts the engine. Results of an earlier run that finishes late are dropped.
+
+## useDocx(document, props?, options?)
+
+```ts
+import { useDocx } from 'vue-docx-document'
+
+const { blob, url, loading, error, update } = useDocx(InvoiceDocument, () => ({ customer: customer.value }), {
+  debounce: 500,
+})
+```
+
+| argument   | type                              |                                        |
+| ---------- | --------------------------------- | -------------------------------------- |
+| `document` | `Component`                       | Renders `<Document>`.                  |
+| `props`    | value, ref or getter of an object | Props for `document`, read reactively. |
+| `options`  | `UseDocxOptions`                  | See below.                             |
+
+| option     | type      | default | notes                                                                                       |
+| ---------- | --------- | ------- | ------------------------------------------------------------------------------------------- |
+| `debounce` | `number`  | `300`   | Milliseconds to wait after a change before rendering again.                                 |
+| `auto`     | `boolean` | `true`  | Render on mount and after every change. When `false`, render only when you call `update()`. |
+| `prettify` | `boolean` | –       | Pretty-print the XML inside the file, for debugging.                                        |
+
+| returns   | type                            |                                                                                                                           |
+| --------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `blob`    | `Readonly<Ref<Blob \| null>>`   | The latest file.                                                                                                          |
+| `url`     | `Readonly<Ref<string \| null>>` | An object URL for `blob`. A replaced URL is revoked after a 10 second grace period, and the last one when the scope ends. |
+| `loading` | `Readonly<Ref<boolean>>`        | `true` while a render runs.                                                                                               |
+| `error`   | `Readonly<Ref<unknown>>`        | The last render's error, including errors thrown by the document's own components.                                        |
+| `update`  | `() => Promise<Blob \| null>`   | Renders now and resolves with the new `Blob`.                                                                             |
+
+## useDocxModel(document, props?, options?)
+
+Resolves the document to its model and keeps it current. It never loads the `docx` engine, which is why `<DocxPreview>` uses it.
+
+```ts
+const { model, loading, error, update } = useDocxModel(ReportDocument, () => ({ year: year.value }))
+```
+
+| option     | type     | default | notes                                |
+| ---------- | -------- | ------- | ------------------------------------ |
+| `debounce` | `number` | `50`    | Milliseconds to wait after a change. |
+
+| returns   | type                               |                                                              |
+| --------- | ---------------------------------- | ------------------------------------------------------------ |
+| `model`   | `Readonly<Ref<DocxModel \| null>>` | The resolved model. See [Types](/reference/types#the-model). |
+| `loading` | `Readonly<Ref<boolean>>`           |                                                              |
+| `error`   | `Readonly<Ref<unknown>>`           |                                                              |
+| `update`  | `() => Promise<DocxModel \| null>` | Resolves now.                                                |

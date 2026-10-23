@@ -1,0 +1,63 @@
+---
+title: Preview
+description: Show the pages as HTML with DocxPreview, and why the page breaks are approximate.
+---
+
+`<DocxPreview>` draws the document as a stack of white pages in the browser. It re-renders when `document-props` change.
+
+```vue
+<DocxPreview :document="InvoiceDocument" :document-props="{ customer }" :scale="0.8" />
+```
+
+| prop             | default            |                                                                   |
+| ---------------- | ------------------ | ----------------------------------------------------------------- |
+| `document`       | required           | The document component. It is read once, when the preview mounts. |
+| `document-props` | –                  | Props for the document, read reactively.                          |
+| `debounce`       | `50`               | Milliseconds to wait after a change.                              |
+| `scale`          | `1`                | Zoom. At `1`, a page has its real size in CSS points.             |
+| `label`          | `Document preview` | The accessible name of the preview region.                        |
+
+Slots: `loading`, and `error` with `{ error }`.
+
+## What it shows
+
+Each page is an `<article data-docx-page>`, sized to the section's page. Margins become padding, and the header and footer repeat on every page, including the first and even variants. Page numbers are filled in. Explicit page breaks and new sections start new pages. A table splits between rows and repeats its `header` rows.
+
+The preview never loads the `docx` engine. It reads the resolved model, so it is cheap to ship to a page that only needs to show a document.
+
+## Pagination is approximate
+
+Word decides where a line breaks and where a page ends. The preview measures blocks in the browser and moves a block to the next page when it overflows. Fonts that are not installed on the viewer's machine, hyphenation, widow control and Word's own line spacing all move text by a little. Treat the preview as a faithful sketch, and expect the page count in Word to differ by a page on long documents.
+
+The file itself is the source of truth. Use `<DocxDownloadButton>` or `downloadDocx()` and open it in Word when exact breaks matter.
+
+## Styling
+
+The preview ships no global CSS. Its structure is marked with `data-*` attributes and inline styles, so you can restyle it from outside, for example the desk behind the pages:
+
+```css
+[data-docx-preview] {
+  display: grid;
+  gap: 24px;
+  padding: 24px;
+  background: var(--color-paper);
+}
+
+[data-docx-page] {
+  box-shadow: var(--shadow-float);
+}
+```
+
+The pages stay white in dark mode, like paper on a desk.
+
+## Your own preview
+
+`useDocxModel()` returns the resolved model as a ref, without loading `docx`. Use it to build a different view, such as an outline of the headings:
+
+```ts
+import { useDocxModel } from 'vue-docx-document'
+
+const { model, loading, error } = useDocxModel(ReportDocument, () => ({ year: year.value }))
+```
+
+See [Composables](/reference/composables).

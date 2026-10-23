@@ -1,0 +1,62 @@
+---
+title: Lists
+description: Bulleted and numbered lists, nesting, restarting and custom bullets.
+---
+
+`<List>` holds `<ListItem>`s. A list is bulleted unless it has the `ordered` flag.
+
+```vue
+<List>
+  <ListItem>Draft the template</ListItem>
+  <ListItem>Wire up the data</ListItem>
+</List>
+
+<List ordered>
+  <ListItem>First</ListItem>
+  <ListItem>Second</ListItem>
+</List>
+```
+
+## Nesting
+
+Put a `<List>` inside a `<ListItem>` to go one level deeper. Word allows nine levels.
+
+```vue
+<List ordered>
+  <ListItem>
+    Prepare
+    <List>
+      <ListItem>Gather the data</ListItem>
+      <ListItem>Check the totals</ListItem>
+    </List>
+  </ListItem>
+  <ListItem>Send</ListItem>
+</List>
+```
+
+By level, bullets cycle through `•`, `◦` and `▪`. Ordered lists use decimal numbers, then lower letters, then lower roman numerals.
+
+## Formats and start
+
+```vue
+<List ordered format="upperRoman" :start="3">…</List>
+<List bullet="–">…</List>
+```
+
+`format` is `decimal`, `lowerLetter`, `upperLetter`, `lowerRoman` or `upperRoman`. `bullet` sets the character of an unordered list. In a nested list they set that level only.
+
+## Restarting
+
+Each top-level `<List>` gets its own numbering instance, so two ordered lists in a row both start at 1. To continue a numbering, use one list with several items, or set `start`.
+
+## Formatting
+
+`<List>` takes run props, and `<ListItem>` takes paragraph and run props, so a list can be styled as a unit:
+
+```vue
+<List ordered color="#444444">
+  <ListItem space-after="4pt" keep-next>…</ListItem>
+</List>
+```
+
+`<ListItem>` accepts everything a `<Paragraph>` does except `heading`.

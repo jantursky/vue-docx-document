@@ -1,0 +1,37 @@
+---
+title: Footnotes and table of contents
+description: Footnotes numbered in document order, and a table of contents Word fills on open.
+---
+
+## Footnotes
+
+`<Footnote>` sits inline at the point of the reference. Its content becomes the note at the bottom of the page. The renderer numbers notes 1, 2, 3 in document order.
+
+```vue
+<Paragraph>
+  Revenue grew 12%<Footnote>Compared with the same quarter last year.</Footnote> across all regions.
+</Paragraph>
+```
+
+A footnote is a block container. Loose text becomes a paragraph, and you can use `<Paragraph>`s inside for several paragraphs or formatting:
+
+```vue
+<Footnote>
+  <Paragraph>Source: internal ledger.</Paragraph>
+  <Paragraph italic>Figures are rounded.</Paragraph>
+</Footnote>
+```
+
+A footnote can't sit inside a header, a footer or another footnote.
+
+## Table of contents
+
+```vue
+<TableOfContents title="Contents" :levels="[1, 3]" hyperlinks />
+```
+
+It lists paragraphs that use [headings](/guides/text-and-paragraphs#headings), from level 1 to level 3 by default. `levels` is `[first, last]`. Entries are links unless you pass `:hyperlinks="false"`.
+
+Word does not know the page numbers until it lays the document out. The file asks Word to update its fields when it opens, so Word shows a prompt and fills the table in after you accept. Other apps may show the table empty until you update fields by hand.
+
+The [preview](/guides/preview) shows the headings the table would list, without page numbers.

@@ -1,0 +1,21 @@
+version: 2
+updates:
+  - package-ecosystem: bun
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      # The engine moves on its own release schedule, so its updates get their own pull request.
+      engine:
+        patterns: ['docx']
+      dev-tooling:
+        dependency-type: development
+        update-types: [minor, patch]
+    ignore:
+      # typescript-eslint and vue-tsc don't support TypeScript 6.1 yet, so it stays on 6.0.x.
+      - dependency-name: typescript
+        versions: ['>= 6.1']
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

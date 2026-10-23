@@ -1,0 +1,63 @@
+---
+title: Troubleshooting
+description: Common errors and what causes them.
+---
+
+Errors from the library start with `[vue-docx-document]`.
+
+## "The root component must render a single &lt;Document&gt;"
+
+The component given to the preview, `useDocx` or `renderTo*` has to render exactly one `<Document>` at the top. A wrapper `<div>` or a fragment with siblings around it is not valid.
+
+## Text vanishes and the console warns about `<Document>`
+
+Text placed directly in `<Document>` is dropped with a warning. Put it in a `<Section>`.
+
+## A link shows as plain text
+
+`href` only allows `http`, `https`, `mailto` and `tel`. Another scheme, such as `javascript:`, warns once and the text is shown without a link. For a link inside the document, use `anchor` and a `<Bookmark>`.
+
+## An image makes the render fail
+
+An image that cannot be loaded is an error, not a gap. Check that:
+
+- a URL is `http(s)` and reachable from where the code runs (a browser needs CORS headers, a server needs network access),
+- the file is under 20 MB,
+- an SVG has a raster `fallback`,
+- in Node, local files are read into a `Uint8Array` first.
+
+## A `<TableRow>` or `<TableCell>` outside its parent
+
+`<TableRow>` has to sit inside `<Table>`, and `<TableCell>` inside `<TableRow>`. Rendering stops with an error instead of guessing.
+
+## A color is rejected
+
+Colors are `#rgb`, `#rrggbb`, `rrggbb` or one of the 16 CSS basic names. Names such as `tomato` throw. Use the hex value.
+
+## The table of contents is empty in Word
+
+Word fills it when you accept the update prompt on open, or with References, Update Table. Only paragraphs that use `:heading` are listed. Viewers other than Word may never update it.
+
+## The preview and Word break pages differently
+
+The preview is approximate. See [Preview](/guides/preview#pagination-is-approximate).
+
+## A line break in the template adds no space
+
+Vue condenses whitespace that contains a line break, and drops it between two elements on separate lines. A space on the same line is kept: `<TextRun bold>Total</TextRun> <TextRun>due</TextRun>`. To join two runs without a space, put them on the same line with nothing between them, or write the text in one run.
+
+## The font looks wrong in Word
+
+Word uses the font by name and falls back if the machine does not have it. The file does not embed fonts. Choose a font that ships with Word, such as Calibri or Arial, or tell recipients to install yours.
+
+## require() of ES Module
+
+The package is ESM only. In CommonJS code, load it with `await import('vue-docx-document')`. Node 22 can also `require()` ES modules.
+
+## `renderToBuffer` fails on a `.vue` import in Node
+
+Node cannot import `.vue` files. Run the script through a tool that compiles them, such as Vite's SSR build, `vite-node` or Nuxt, or write the document with render functions. See [Server rendering](/guides/server).
+
+## A footnote in a header or footer
+
+`<Footnote>` is an error inside a `<Header>`, a `<Footer>` or another `<Footnote>`. Word only supports footnotes in the body text.

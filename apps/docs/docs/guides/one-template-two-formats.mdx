@@ -1,0 +1,222 @@
+---
+title: One template, two formats
+description: Fill an invoice once and export it as a Word file and a PDF, with vue-docx-document and vue-pdf-document.
+---
+
+Word is where people edit a document. PDF is where they send it. The same data often has to leave as both, and two parallel templates drift apart.
+
+[vue-pdf-document](https://vue-pdf-document-docs.vercel.app) is the sibling library for PDF. It has the same shape: components, a renderer, `renderToBuffer()`. The two document models differ (flow layout in Word, flexbox pages in PDF), so one template cannot use both libraries' components directly. The fix is a small kit.
+
+## The kit pattern
+
+Write the template against a few format-neutral components, the kit. Give each format its own implementation of every component, with identical props. The demo app does this in `apps/example/src/invoice`:
+
+```text
+invoice/
+  InvoiceTemplate.vue   # data in, kit components out
+  model.ts, totals.ts, i18n.ts   # invoice data, totals and labels: plain TypeScript
+  kit/
+    types.ts            # the props of every kit component
+    docx.ts             # the kit on vue-docx-document
+    pdf.ts              # the same kit on vue-pdf-document
+    context.ts          # hands a kit to the template
+```
+
+### The contract
+
+`types.ts` is the only thing the template and both implementations share:
+
+```ts kit/types.ts
+export interface LineProps {
+  /** Default 9. */
+  size?: number
+  bold?: boolean
+  /** Uppercase with wide tracking, for labels. */
+  caps?: boolean
+  color?: string
+  align?: 'left' | 'right'
+  /** Space below the line. */
+  after?: number
+}
+
+export interface ColumnProps {
+  /** Share of the row: columns of width 2 and 1 split it two to one. */
+  width: number
+  background?: string
+  padding?: number
+}
+
+/** A kit component: typed props, content in the default slot. */
+export type KitComponent<Props> = DefineComponent<Props>
+
+export interface Kit {
+  KitDocument: KitComponent<KitDocumentProps>
+  Columns: KitComponent<ColumnsProps>
+  Column: KitComponent<ColumnProps>
+  Line: KitComponent<LineProps>
+  Spacer: KitComponent<SpacerProps>
+  Img: KitComponent<ImgProps>
+  ItemsTable: KitComponent<ItemsTableProps>
+  PageFooter: KitComponent<PageFooterProps>
+}
+```
+
+Lengths are points and colors are `#rrggbb`, so the same numbers mean the same thing in both formats. The file also declares `KitDocumentProps`, `ColumnsProps`, `SpacerProps`, `ImgProps`, `ItemsTableProps` and `PageFooterProps`.
+
+### Two implementations
+
+A `Line` is a `<Paragraph>` in Word and a `<Text>` in the PDF:
+
+```ts kit/docx.ts
+const Line = kitComponent<LineProps>(
+  'Line',
+  { size: Number, bold: Boolean, caps: Boolean, color: String, align: String, after: Number },
+  (p, slots) =>
+    h(
+      Paragraph,
+      {
+        size: p.size,
+        bold: p.bold,
+        allCaps: p.caps,
+        characterSpacing: p.caps ? 0.6 : undefined,
+        color: p.color,
+        align: p.align,
+        spaceAfter: p.after,
+      },
+      slots.default,
+    ),
+)
+```
+
+```ts kit/pdf.ts
+const Line = kitComponent<LineProps>(
+  'Line',
+  { size: Number, bold: Boolean, caps: Boolean, color: String, align: String, after: Number },
+  (p, slots) =>
+    h(
+      Text,
+      {
+        style: {
+          fontSize: p.size,
+          fontWeight: p.bold ? 700 : 400,
+          textTransform: p.caps ? 'uppercase' : undefined,
+          letterSpacing: p.caps ? 0.6 : undefined,
+          color: p.color,
+          textAlign: p.align,
+          marginBottom: p.after,
+        },
+      },
+      slots.default,
+    ),
+)
+```
+
+Layout is where the formats differ most. PDF has flexbox, so `Columns` is a row of views. Word has none, so `Columns` is a table without borders. It reads the `width` of its `Column` children and gives each cell its size in points:
+
+```ts kit/pdf.ts
+const Columns = kitComponent<ColumnsProps>('Columns', { gap: Number }, (p, slots) =>
+  h(View, { style: { flexDirection: 'row', gap: p.gap } }, slots.default),
+)
+```
+
+```ts kit/docx.ts
+const Columns = kitComponent<ColumnsProps>('Columns', { gap: Number }, (p, slots) => {
+  const columns = flatten(slots.default?.() ?? [])
+  const gap = p.gap ?? 0
+  const shares = columns.map((column) => Number(column.props?.width))
+  const total = shares.reduce((sum, share) => sum + share, 0)
+  const available = CONTENT_WIDTH - gap * (columns.length - 1)
+  const sizes = shares.map((share) => (available * share) / total)
+
+  const cells = columns.flatMap((column, index) => [
+    ...(index > 0 && gap > 0 ? [h(TableCell, { width: gap }, () => h(Paragraph))] : []),
+    cloneVNode(column, { cellWidth: sizes[index] }),
+  ])
+  const columnWidths = sizes.flatMap((size, index) => (index > 0 && gap > 0 ? [gap, size] : [size]))
+
+  return h(Table, { columnWidths, width: CONTENT_WIDTH, layout: 'fixed', borders: 'none', cellPadding: 0 }, () =>
+    h(TableRow, { cantSplit: true }, () => cells),
+  )
+})
+```
+
+`flatten` looks through fragments so that a `v-for` of columns works. The page footer follows the same idea: a `<Footer>` with `<PageNumber>` in Word, a `fixed` view with a `render` slot in the PDF. See `docx.ts` and `pdf.ts` in the repository for every component.
+
+### Handing the kit to the template
+
+`context.ts` provides the kit with `provide`/`inject`:
+
+```ts kit/context.ts
+const kitKey: InjectionKey<Kit> = Symbol('invoice-kit')
+
+/** The kit the template renders with, provided by `withKit`. */
+export const useKit = (): Kit => {
+  const kit = inject(kitKey)
+  if (!kit) throw new Error('useKit() needs a component made with withKit().')
+  return kit
+}
+
+/** Wraps a template so every kit component inside it comes from `kit`. */
+export const withKit = <Props extends object>(kit: Kit, template: Component<Props>): Component<Props> =>
+  defineComponent({
+    name: 'WithKit',
+    inheritAttrs: false,
+    setup: (_props, { attrs }) => {
+      provide(kitKey, kit)
+      return () => h(template as Component, attrs)
+    },
+  }) as Component<Props>
+```
+
+Each format is then one line:
+
+```ts
+export const InvoiceDocx = withKit<InvoiceDocumentProps>(docxKit, InvoiceTemplate)
+export const InvoicePdf = withKit<InvoiceDocumentProps>(pdfKit, InvoiceTemplate)
+```
+
+### The template
+
+`InvoiceTemplate.vue` takes the kit from `useKit()` and never imports either library. This is the top of its template:
+
+```vue InvoiceTemplate.vue
+<script setup lang="ts">
+const props = defineProps<InvoiceDocumentProps>()
+
+// Everything on the page comes from the kit, so this file doesn't know whether it is
+// writing a Word file or a PDF.
+const { KitDocument, Columns, Column, Line, Spacer, Img, ItemsTable, PageFooter } = useKit()
+</script>
+
+<template>
+  <KitDocument
+    :title="`${t.invoice} ${invoice.number}`"
+    :author="invoice.seller.name"
+    :subject="`${t.invoice} ${invoice.number} – ${invoice.buyer.name}`"
+    :language="invoice.language"
+  >
+    <Columns :gap="16">
+      <Column :width="1">
+        <Img v-if="invoice.logo" :src="invoice.logo" :alt="invoice.seller.name" :height="48" />
+        <Line v-else bold :size="16" :color="accent">{{ invoice.seller.name }}</Line>
+      </Column>
+      <Column :width="1">
+        <Line bold :size="24" :color="accent" align="right">{{ t.invoice.toUpperCase() }}</Line>
+        <Line :size="11" :color="MUTED" align="right">{{ t.number }} {{ invoice.number }}</Line>
+      </Column>
+    </Columns>
+    <Spacer :height="24" />
+    <!-- parties, dates, ItemsTable, VAT recap, total, notes, PageFooter -->
+  </KitDocument>
+</template>
+```
+
+The totals, tax lines and labels come from `totals.ts` and `i18n.ts`, so both outputs show the same numbers in the same language.
+
+## In the demo
+
+The demo app's invoice generator is built this way: one template, one data set, a Download DOCX button and a Download PDF button. The source is in `apps/example/src/invoice`, and the live version is at [vue-docx-document.vercel.app](https://vue-docx-document.vercel.app).
+
+## When it fits
+
+It fits documents that are mostly text blocks and tables: invoices, quotes, letters, certificates. It is a poor fit for pixel layouts in PDF, or for Word features such as footnotes, that have no PDF twin. For those, write two templates and share the data model.

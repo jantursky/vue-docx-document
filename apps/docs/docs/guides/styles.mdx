@@ -1,0 +1,80 @@
+---
+title: Styles
+description: Document defaults, heading styles and raw Word styles.
+---
+
+## Document defaults
+
+Set the base look on `<Document>`. Everything inherits it unless a closer element says otherwise.
+
+```vue
+<Document font="Calibri" :font-size="11" color="#1c1d1f" :line-height="1.15" space-after="6pt">
+```
+
+`font-size` is in points, `line-height` is a multiple, and `space-after` is the space under each paragraph that does not set its own. Without them the document uses Calibri, 11pt, a line height of 1.15 and 8pt after paragraphs. Paragraphs in table cells, headers, footers and footnotes have no space after unless they set one.
+
+## Document properties
+
+`title`, `subject`, `creator`, `description`, `keywords`, `lastModifiedBy` and `revision` fill the file's properties, which Word shows under File, Info.
+
+## Language
+
+`language` takes a BCP 47 tag such as `en-US` or `sk-SK`. Word uses it to check spelling, and the preview sets `lang` on its pages.
+
+```vue
+<Document language="sk-SK">…</Document>
+```
+
+## Heading styles
+
+`<Paragraph :heading="1">` uses Word's own Heading 1, so the navigation pane and the table of contents work. The `headings` prop changes how each level looks. Keys are `title` and `1` to `6`:
+
+```vue
+<script setup lang="ts">
+import type { DocumentProps } from 'vue-docx-document'
+
+const headings: DocumentProps['headings'] = {
+  title: { font: 'Georgia', size: 28, bold: true, spaceAfter: '12pt' },
+  1: { size: 20, bold: true, color: '#1c1d1f', spaceBefore: '18pt', spaceAfter: '6pt', keepNext: true },
+  2: { size: 15, bold: true, spaceBefore: '12pt', spaceAfter: '4pt' },
+}
+</script>
+
+<template>
+  <Document :headings="headings">…</Document>
+</template>
+```
+
+Each entry takes run props plus `align`, `spaceBefore`, `spaceAfter` and `keepNext`.
+
+## Raw styles
+
+For a named style you can reuse, pass `docx`'s own style options through `styles` and refer to a paragraph style by id with `style-id`:
+
+```vue
+<script setup lang="ts">
+const styles = {
+  paragraphStyles: [
+    {
+      id: 'Callout',
+      name: 'Callout',
+      basedOn: 'Normal',
+      run: { italics: true, color: '266DF0' },
+      paragraph: { indent: { left: 360 }, spacing: { before: 120, after: 120 } },
+    },
+  ],
+}
+</script>
+
+<template>
+  <Document :styles="styles">
+    <Section>
+      <Paragraph style-id="Callout">Mind the gap.</Paragraph>
+    </Section>
+  </Document>
+</template>
+```
+
+These options use `docx`'s units (twips, half-points, no `#` on colors). See the [docx styling docs](https://docx.js.org/#/usage/styling-with-js). Raw styles are merged after the ones built from the props above.
+
+When a feature has no component or style option at all, `createDocx(...).toDocx()` returns the `docx` `Document` object, so you can inspect it or pack it yourself. See [Functions](/reference/functions).

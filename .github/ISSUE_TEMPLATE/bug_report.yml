@@ -1,0 +1,60 @@
+name: Bug report
+description: A document renders wrong, something throws, or doesn't match the docs.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. If the same document comes out wrong when built with the `docx` package directly, the bug is in `docx`; please report it [upstream](https://github.com/dolanmiu/docx/issues) as well and link it here.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you expected, and what you got instead. Include the error message if there is one.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction
+      description: The smallest document component that shows the problem, or a link to a StackBlitz or repository.
+      render: vue
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: vue-docx-document version
+      placeholder: 1.0.0
+    validations:
+      required: true
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Where does it run
+      multiple: true
+      options:
+        - Browser (Chrome / Edge)
+        - Browser (Firefox)
+        - Browser (Safari)
+        - Node
+        - Nuxt or another SSR framework
+        - Web Worker
+  - type: dropdown
+    id: opened_with
+    attributes:
+      label: Which app opens the file
+      description: Word, LibreOffice, Google Docs, Pages, or the preview component, if the problem only shows in one of them.
+      multiple: true
+      options:
+        - Microsoft Word
+        - LibreOffice
+        - Google Docs
+        - Apple Pages
+        - DocxPreview component
+        - Other
+  - type: input
+    id: vue
+    attributes:
+      label: Vue and bundler versions
+      placeholder: vue 3.5.x, vite 8.x

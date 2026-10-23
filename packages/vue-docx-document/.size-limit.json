@@ -1,0 +1,17 @@
+[
+  {
+    "name": "Library code (docx excluded)",
+    "path": "dist/index.js",
+    "ignore": ["vue", "docx"],
+    "gzip": true,
+    "limit": "22 kB"
+  },
+  {
+    "name": "With docx, which loads on first export",
+    "path": "dist/index.js",
+    "import": "{ Document, Section, Paragraph, renderToBlob }",
+    "ignore": ["vue"],
+    "gzip": true,
+    "limit": "300 kB"
+  }
+]

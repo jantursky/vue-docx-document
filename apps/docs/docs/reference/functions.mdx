@@ -1,0 +1,55 @@
+---
+title: Functions
+description: Render once, create a live instance, write a model, and convert lengths.
+---
+
+`props` is always a plain object of props for the document component. `options` is `WriteOptions`: `{ prettify?: boolean }`, which pretty-prints the XML inside the file.
+
+## Render once
+
+| function                                                               | returns                                                        |
+| ---------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `renderToBuffer(document, props?, options?)`                           | `Promise<Uint8Array>`. Works in Node, workers and the browser. |
+| `renderToBlob(document, props?, options?)`                             | `Promise<Blob>` with the Word MIME type.                       |
+| `renderToBase64(document, props?, options?)`                           | `Promise<string>`                                              |
+| `renderToModel(document, props?)`                                      | `Promise<DocxModel>`. Never loads `docx`.                      |
+| `downloadDocx(document, props?, fileName = 'document.docx', options?)` | `Promise<Blob>`. Renders and saves in the browser.             |
+| `saveBlob(blob, fileName)`                                             | `void`. Saves a `Blob` through a temporary link.               |
+
+`DOCX_MIME` is the MIME type, `application/vnd.openxmlformats-officedocument.wordprocessingml.document`.
+
+## createDocx(document, props?)
+
+Mounts the document in a Vue app of its own and returns a live `DocxInstance`. `props` may be a value, a ref or a getter, so reactive changes re-render it. Call `unmount()` when you are done.
+
+```ts
+import { createDocx } from 'vue-docx-document'
+
+const instance = createDocx(ReportDocument, () => ({ year: year.value }))
+const bytes = await instance.toBuffer()
+instance.unmount()
+```
+
+| member               | type                                                                                   |
+| -------------------- | -------------------------------------------------------------------------------------- |
+| `toModel()`          | `Promise<DocxModel>`. The resolved document, as the preview draws it.                  |
+| `toBlob(options?)`   | `Promise<Blob>`. Also calls `Document`'s `onRender` with `{ blob }`.                   |
+| `toBuffer(options?)` | `Promise<Uint8Array>`                                                                  |
+| `toBase64(options?)` | `Promise<string>`                                                                      |
+| `toDocx()`           | `Promise<Document>` from `docx`. For anything the components do not cover.             |
+| `onChange(listener)` | Calls `listener` after every change to the tree. Returns a function that unsubscribes. |
+| `unmount()`          | Stops the instance.                                                                    |
+
+## Lower level
+
+| function                              | returns                                                                                                   |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `writeModel(model, output, options?)` | Writes a `DocxModel`. `output` is `'blob'`, `'uint8array'` or `'base64'`, and the result type follows it. |
+| `toDocx(model)`                       | `Promise<Document>`. Builds the `docx` object for a model.                                                |
+| `toPoints(length)`                    | `number`. Converts a [`Length`](/reference/types#length) to points. Throws on a string it cannot read.    |
+
+`docx` is loaded with a dynamic `import('docx')` on first use and cached.
+
+## Errors
+
+Errors are `Error`s with a `[vue-docx-document]` prefix. Input that can be recovered from, such as text in `<Document>` or an unsupported link scheme, warns once with `console.warn` and is dropped. Input that cannot, such as an image that fails to load or a `<TableRow>` outside a `<Table>`, throws.

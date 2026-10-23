@@ -1,0 +1,86 @@
+---
+title: Getting started
+description: Install vue-docx-document, write a document component, then preview it and download the file.
+sidebar:
+  order: 2
+---
+
+## Install
+
+```package-install
+vue-docx-document
+```
+
+It needs Vue `^3.5`. The package is ESM only. The `docx` engine is a dependency and loads on first use, so a page that only shows the preview never downloads it.
+
+## Write a document
+
+A document is an ordinary component whose template starts with `<Document>`. It holds one or more `<Section>`s, and a section holds the content:
+
+```vue HelloDocument.vue
+<script setup lang="ts">
+import { Document, Paragraph, Section, TextRun } from 'vue-docx-document'
+
+defineProps<{ name: string }>()
+</script>
+
+<template>
+  <Document title="Hello" font="Calibri" :font-size="11">
+    <Section>
+      <Paragraph :heading="1">Hello, {{ name }}</Paragraph>
+      <Paragraph> Written with <TextRun bold>Vue components</TextRun> and saved as a Word file. </Paragraph>
+    </Section>
+  </Document>
+</template>
+```
+
+Text may sit directly in a `<Paragraph>`, in a `<TextRun>` or in another inline element. Text placed straight in a `<Section>` or a table cell gets its own paragraph.
+
+## Preview and download
+
+`<DocxPreview>` draws the pages as HTML and updates when `document-props` change. `<DocxDownloadButton>` builds the file when it is clicked:
+
+```vue App.vue
+<script setup lang="ts">
+import { ref } from 'vue'
+import { DocxDownloadButton, DocxPreview } from 'vue-docx-document'
+
+import HelloDocument from './HelloDocument.vue'
+
+const name = ref('Ada')
+</script>
+
+<template>
+  <input v-model="name" />
+  <DocxDownloadButton :document="HelloDocument" :document-props="{ name }" file-name="hello.docx" />
+  <DocxPreview :document="HelloDocument" :document-props="{ name }" />
+</template>
+```
+
+The preview is close to what Word shows, not identical. See [Preview](/guides/preview).
+
+For your own markup, `useDocx()` gives you the `blob`, `url`, `loading` and `error` refs. See the [reference](/reference/composables).
+
+## Render once
+
+In a click handler, a worker or on a server, render to a `Blob` or to bytes:
+
+```ts
+import { downloadDocx, renderToBlob, renderToBuffer } from 'vue-docx-document'
+
+import HelloDocument from './HelloDocument.vue'
+
+const blob = await renderToBlob(HelloDocument, { name: 'Ada' })
+const bytes = await renderToBuffer(HelloDocument, { name: 'Ada' }) // Uint8Array
+await downloadDocx(HelloDocument, { name: 'Ada' }, 'hello.docx') // browser: renders and saves
+```
+
+## Node
+
+`renderToBuffer()` works without a DOM. In a Node script, write the document with render functions or compile `.vue` files with your bundler. [Server rendering](/guides/server) shows both, plus an HTTP endpoint.
+
+## Next steps
+
+- [Text and paragraphs](/guides/text-and-paragraphs) for runs, headings and spacing.
+- [Sections and pages](/guides/sections-and-pages) for page size, margins, headers and page numbers.
+- [Migrating from docx](/guides/migrating-from-docx) if you already have imperative code.

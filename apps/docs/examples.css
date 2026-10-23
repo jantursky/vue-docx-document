@@ -1,0 +1,220 @@
+/*
+ * Injected into every live preview frame, after Blume's defaults. The examples are the demo
+ * app's files and use its class names, so this repeats the demo's rules for them, with the
+ * values from design/tokens.css.
+ */
+:root {
+  --color-paper: #f4f5f6;
+  --color-surface: #ffffff;
+  --color-haze: #eeeff1;
+  --color-ink: #1c1d1f;
+  --color-muted: #6f7988;
+  --color-subtle: #8f99a8;
+  --color-border: #e4e7ec;
+  --color-hairline: #cad0d9;
+  --color-accent: #266df0;
+  --color-accent-wash: #e4edff;
+  --color-button: #232529;
+  --color-button-ink: #ffffff;
+  --color-danger: #c4321f;
+  --radius-control: 10px;
+  --radius-card: 12px;
+  --shadow-float: 0 12px 30px 0 rgb(0 0 0 / 0.04), 0 1px 3px 0 rgb(28 40 64 / 0.08);
+  --focus-ring: 0 0 0 4px var(--color-accent-wash);
+}
+
+:root[data-theme='dark'],
+.dark {
+  --color-paper: #141518;
+  --color-surface: #18191d;
+  --color-haze: #1f2125;
+  --color-ink: #eceef1;
+  --color-muted: #a3abb7;
+  --color-subtle: #7d8592;
+  --color-border: #2a2d33;
+  --color-hairline: #353941;
+  --color-accent: #5b8ff5;
+  --color-accent-wash: rgb(64 127 242 / 0.14);
+  --color-button: #f4f5f6;
+  --color-button-ink: #101113;
+  --color-danger: #f07a68;
+  --shadow-float: 0 12px 30px 0 rgb(0 0 0 / 0.45);
+}
+
+body {
+  padding: 16px !important;
+  color: var(--color-ink);
+  font-family: 'Inter Variable', Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 14px;
+}
+
+/* Blume centers the example in a flex body; the examples here fill the frame instead. */
+[data-blume-example] {
+  width: 100%;
+  margin: 0 !important;
+}
+
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  width: 100%;
+}
+
+.stack {
+  display: grid;
+  width: 100%;
+  gap: 16px;
+  justify-items: start;
+}
+
+.stack > * {
+  max-width: 100%;
+}
+
+.stack .field,
+.stack .items,
+.stack .add {
+  width: 100%;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 36px;
+  padding: 0 12px;
+  color: var(--color-ink);
+  font: inherit;
+  font-size: 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-control);
+}
+
+input:focus-visible {
+  border-color: var(--color-accent);
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+input::placeholder {
+  color: var(--color-subtle);
+}
+
+input[type='checkbox'] {
+  width: 16px;
+  min-height: 0;
+  height: 16px;
+  accent-color: var(--color-button);
+}
+
+input[type='range'] {
+  padding: 0;
+  border: 0;
+  accent-color: var(--color-button);
+}
+
+.check {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.note {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.items {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.items li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.add {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.button {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  padding: 0 16px;
+  color: var(--color-ink);
+  font: inherit;
+  font-size: 15px;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+}
+
+.button:hover {
+  background: var(--color-haze);
+}
+
+.button-primary {
+  background: var(--color-button);
+  border-color: transparent;
+  color: var(--color-button-ink);
+}
+
+.button-primary:hover {
+  background: var(--color-button);
+  opacity: 0.88;
+}
+
+.button-small {
+  height: 32px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.viewer {
+  min-width: 0;
+  max-height: 560px;
+  padding: 16px;
+  background: var(--color-paper);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.viewer [data-docx-page] {
+  margin: 0 auto 16px;
+  box-shadow: var(--shadow-float);
+}
+
+.viewer [data-docx-page]:last-child {
+  margin-bottom: 0;
+}

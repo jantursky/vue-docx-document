@@ -1,0 +1,64 @@
+---
+title: Server rendering
+description: Render Word files in Node, write them to disk and send them over HTTP.
+---
+
+`renderToBuffer()` returns a `Uint8Array` and needs no DOM, so it runs in Node, in workers and in edge runtimes.
+
+## Compile the document
+
+`.vue` files have to be compiled first. Nuxt, Vite's SSR build and `vite-node` already do that. In a plain Node script, write the document with render functions:
+
+```ts hello.ts
+import { h } from 'vue'
+import { Document, Paragraph, Section, renderToBuffer } from 'vue-docx-document'
+
+const Hello = {
+  render: () => h(Document, () => h(Section, () => h(Paragraph, () => 'Hello'))),
+}
+
+const bytes = await renderToBuffer(Hello)
+```
+
+## Write to disk
+
+```ts report.ts
+import { writeFile } from 'node:fs/promises'
+
+import { renderToBuffer } from 'vue-docx-document'
+
+import ReportDocument from './ReportDocument.vue'
+
+const bytes = await renderToBuffer(ReportDocument, { year: 2026 })
+await writeFile('report.docx', bytes)
+```
+
+Images in a document must be reachable from the server. Pass bytes for local files, or a `data:` or `https:` URL. See [Images](/guides/images).
+
+## Send over HTTP
+
+```ts server.ts
+import { createServer } from 'node:http'
+
+import { DOCX_MIME, renderToBuffer } from 'vue-docx-document'
+
+import InvoiceDocument from './InvoiceDocument.vue'
+
+createServer(async (request, response) => {
+  const file = await renderToBuffer(InvoiceDocument, { customer: 'Ada' })
+  response.writeHead(200, {
+    'content-type': DOCX_MIME,
+    'content-length': file.length,
+    'content-disposition': 'attachment; filename="invoice.docx"',
+  })
+  response.end(file)
+}).listen(3000)
+```
+
+The same call works in a Nuxt server route or any handler that can return bytes. Render before you send the status line, so a failed render can still answer with an error status.
+
+## Other outputs
+
+`renderToBlob()` and `renderToBase64()` do the same for a `Blob` and a base64 string. `renderToModel()` returns the resolved model and never loads `docx`, which is handy in tests: assert on the model instead of unzipping the file.
+
+The package depends on the browser only in `saveBlob()` and `downloadDocx()`, which save a file through a link.

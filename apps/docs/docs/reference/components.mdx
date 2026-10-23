@@ -1,0 +1,241 @@
+---
+title: Components
+description: Every component, its props and where it may appear.
+---
+
+All components are exported from `vue-docx-document`. Props are typed in `components/types.ts`, and the types are exported too. In a template, props can be written in kebab-case (`font-size`, `space-after`). Flags such as `bold` are declared as booleans, so a bare attribute means `true`.
+
+Lengths accept a number (points) or a string with a unit. See [Types](/reference/types#length).
+
+## Structure
+
+| component          | where it may appear | children                                      |
+| ------------------ | ------------------- | --------------------------------------------- |
+| `Document`         | root                | `Section`                                     |
+| `Section`          | `Document`          | blocks, `Header`, `Footer`, `TableOfContents` |
+| `Header`, `Footer` | `Section`           | blocks                                        |
+
+A block is a `Paragraph`, `Table`, `List`, `Image`, `PageBreak` or `TableOfContents`. Block containers are `Section`, `Header`, `Footer`, `TableCell` and `Footnote`. Loose inline content in a block container is wrapped in an implicit paragraph.
+
+### Document
+
+| prop                                                                       | type                               | default   | notes                                                                                                                     |
+| -------------------------------------------------------------------------- | ---------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `title`, `subject`, `creator`, `description`, `keywords`, `lastModifiedBy` | `string`                           | –         | Document properties.                                                                                                      |
+| `revision`                                                                 | `number`                           | –         | Document properties.                                                                                                      |
+| `language`                                                                 | `string`                           | –         | BCP 47 language of the text, such as `en-US` or `sk-SK`, so Word checks spelling in it. The preview sets `lang` too.      |
+| `font`                                                                     | `string`                           | `Calibri` | Default font.                                                                                                             |
+| `fontSize`                                                                 | `number`                           | `11`      | Default size in points.                                                                                                   |
+| `color`                                                                    | `Color`                            | –         | Default text color.                                                                                                       |
+| `lineHeight`                                                               | `number`                           | `1.15`    | Default line height as a multiple.                                                                                        |
+| `spaceAfter`                                                               | `Length`                           | `8pt`     | Space after paragraphs that do not set their own. Paragraphs in table cells, headers, footers and footnotes default to 0. |
+| `headings`                                                                 | `Partial<Record<HeadingLevel, …>>` | –         | Look of `title` and `1`–`6`: [run style](#run-style) plus `align`, `spaceBefore`, `spaceAfter`, `keepNext`.               |
+| `styles`                                                                   | `IStylesOptions`                   | –         | Raw `docx` styles, merged after the ones built from the props above.                                                      |
+| `onRender`                                                                 | `(info: { blob: Blob }) => void`   | –         | Called with each Blob that `toBlob()` or `useDocx()` produces.                                                            |
+
+### Section
+
+| prop               | type                                                                                            | default      |
+| ------------------ | ----------------------------------------------------------------------------------------------- | ------------ |
+| `size`             | `'A3' \| 'A4' \| 'A5' \| 'Letter' \| 'Legal' \| 'Tabloid' \| { width: Length; height: Length }` | `'A4'`       |
+| `orientation`      | `'portrait' \| 'landscape'`                                                                     | –            |
+| `margin`           | `Length` or `{ top, right, bottom, left, header, footer, gutter }` (each `Length`)              | 1 inch       |
+| `columns`          | `number` or `{ count: number; space?: Length; separator?: boolean }`                            | –            |
+| `type`             | `'nextPage' \| 'continuous' \| 'evenPage' \| 'oddPage'`                                         | `'nextPage'` |
+| `pageNumberStart`  | `number`                                                                                        | –            |
+| `pageNumberFormat` | `'decimal' \| 'upperRoman' \| 'lowerRoman' \| 'upperLetter' \| 'lowerLetter'`                   | –            |
+
+### Header and Footer
+
+| prop   | type                             | default     |
+| ------ | -------------------------------- | ----------- |
+| `type` | `'default' \| 'first' \| 'even'` | `'default'` |
+
+A `first` header or footer gives its section a distinct first page. An `even` one turns on odd and even headers for the document.
+
+## Text
+
+### Paragraph
+
+Where: a block container. Children: text and inline elements. An empty paragraph keeps the height its `size` gives it, so `<Paragraph :size="20" />` is a blank line of 20pt text.
+
+Props: all [run style](#run-style) props, all [paragraph style](#paragraph-style) props, and:
+
+| prop      | type                                    | notes                                            |
+| --------- | --------------------------------------- | ------------------------------------------------ |
+| `heading` | `'title' \| 1 \| 2 \| 3 \| 4 \| 5 \| 6` | Uses Word's built-in style of that name.         |
+| `styleId` | `string`                                | A paragraph style id from `Document`'s `styles`. |
+
+### TextRun
+
+Where: inline. Children: text and inline elements.
+
+| prop   | type     | notes                               |
+| ------ | -------- | ----------------------------------- |
+| `text` | `string` | The text, if not given as children. |
+
+Plus all [run style](#run-style) props.
+
+### Link
+
+Where: inline. Children: text and inline elements, but not another `Link`.
+
+| prop     | type     | notes                                      |
+| -------- | -------- | ------------------------------------------ |
+| `href`   | `string` | An `http`, `https`, `mailto` or `tel` URL. |
+| `anchor` | `string` | The `id` of a `Bookmark` in the document.  |
+
+Plus all run style props. The default look is color `#0563c1` with a single underline.
+
+### Bookmark
+
+Where: inline. Children: text and inline elements.
+
+| prop | type     | notes                                      |
+| ---- | -------- | ------------------------------------------ |
+| `id` | `string` | Required. The target of `Link`'s `anchor`. |
+
+### Break, Tab, ColumnBreak, PageBreak
+
+No props, no children. `Break` ends the line, `Tab` jumps to the next tab stop, `ColumnBreak` moves to the next column. `PageBreak` starts a new page and may appear between blocks or inside a paragraph. `Break`, `Tab` and `ColumnBreak` are inline.
+
+### PageNumber
+
+Where: inline. Props: all run style props and:
+
+| prop   | type                                      | default     |
+| ------ | ----------------------------------------- | ----------- |
+| `type` | `'current' \| 'total' \| 'section-total'` | `'current'` |
+
+### Footnote
+
+Where: inline, at the reference. Children: text, inline elements and `Paragraph`s. No props. Notes are numbered from 1 in document order. A `Footnote` inside a header, a footer or another footnote is an error.
+
+### Run style
+
+These props are accepted by `Paragraph`, `TextRun`, `Link`, `PageNumber`, `ListItem`, `List`, `Table`, `TableRow` and `TableCell`, and the nearest one wins.
+
+| prop                                                                                           | type                                                                                                                                                                                                        |
+| ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `bold`, `italic`, `strike`, `doubleStrike`, `superscript`, `subscript`, `allCaps`, `smallCaps` | `boolean`                                                                                                                                                                                                   |
+| `underline`                                                                                    | `boolean \| 'single' \| 'double' \| 'thick' \| 'dotted' \| 'dash' \| 'wave' \| 'words'` (`true` is `single`)                                                                                                |
+| `color`                                                                                        | `Color`                                                                                                                                                                                                     |
+| `highlight`                                                                                    | `'yellow' \| 'green' \| 'cyan' \| 'magenta' \| 'blue' \| 'red' \| 'darkBlue' \| 'darkCyan' \| 'darkGreen' \| 'darkMagenta' \| 'darkRed' \| 'darkYellow' \| 'darkGray' \| 'lightGray' \| 'black' \| 'white'` |
+| `shading`                                                                                      | `Color`. Any background color behind the text; `highlight` has Word's 16 colors only.                                                                                                                       |
+| `font`                                                                                         | `string`                                                                                                                                                                                                    |
+| `size`                                                                                         | `number`, in points                                                                                                                                                                                         |
+| `characterSpacing`                                                                             | `Length`                                                                                                                                                                                                    |
+
+### Paragraph style
+
+| prop                                       | type                                                                                                                              | notes                       |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- | --------------------------- |
+| `align`                                    | `'left' \| 'center' \| 'right' \| 'justify'`                                                                                      |                             |
+| `spaceBefore`, `spaceAfter`                | `Length`                                                                                                                          |                             |
+| `lineHeight`                               | `number`                                                                                                                          | A multiple, such as `1.15`. |
+| `indent`, `indentRight`                    | `Length`                                                                                                                          | Left and right indent.      |
+| `firstLine`, `hanging`                     | `Length`                                                                                                                          |                             |
+| `keepNext`, `keepLines`, `pageBreakBefore` | `boolean`                                                                                                                         |                             |
+| `border`                                   | `{ top?, right?, bottom?, left? }` of [`BorderSide`](/reference/types#borders)                                                    |                             |
+| `background`                               | `Color`                                                                                                                           | Fill behind the paragraph.  |
+| `tabStops`                                 | `{ position: Length; type?: 'left' \| 'center' \| 'right' \| 'decimal'; leader?: 'none' \| 'dot' \| 'hyphen' \| 'underscore' }[]` |                             |
+
+## Lists
+
+### List
+
+Where: a block container, or inside a `ListItem` for nesting. Children: `ListItem`. Plus all run style props.
+
+| prop      | type                                                                          | default                                               |
+| --------- | ----------------------------------------------------------------------------- | ----------------------------------------------------- |
+| `ordered` | `boolean`                                                                     | `false`                                               |
+| `start`   | `number`                                                                      | `1`                                                   |
+| `format`  | `'decimal' \| 'lowerLetter' \| 'upperLetter' \| 'lowerRoman' \| 'upperRoman'` | decimal, then lower letter, then lower roman by level |
+| `bullet`  | `string`                                                                      | `•`, `◦`, `▪` by level                                |
+
+A nested `List` sets `format` and `bullet` for its own level only.
+
+### ListItem
+
+Where: `List`. Children: text, inline elements and a nested `List`. Props: everything `Paragraph` accepts except `heading`.
+
+## Tables
+
+### Table
+
+Where: a block container. Children: `TableRow`. Plus all run style props.
+
+| prop           | type                                                                                                                          | default                                  |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| `columnWidths` | `Length[]`                                                                                                                    | –                                        |
+| `width`        | `Length` or a percentage such as `'100%'`                                                                                     | `'100%'`                                 |
+| `layout`       | `'fixed' \| 'auto'`                                                                                                           | `fixed` with `columnWidths`, else `auto` |
+| `align`        | `'left' \| 'center' \| 'right'`                                                                                               | –                                        |
+| `borders`      | `{ top?, right?, bottom?, left?, insideH?, insideV? }` of `BorderSide`, or `'none'`. An object draws only the sides it names. | 0.5pt single lines                       |
+| `cellPadding`  | `Length` or `{ top?, right?, bottom?, left? }`                                                                                | –                                        |
+
+### TableRow
+
+Where: `Table`. Children: `TableCell`. Plus all run style props.
+
+| prop         | type      | notes                                            |
+| ------------ | --------- | ------------------------------------------------ |
+| `header`     | `boolean` | Repeats at the top of each page the table spans. |
+| `cantSplit`  | `boolean` | Keeps the row on one page.                       |
+| `height`     | `Length`  |                                                  |
+| `background` | `Color`   |                                                  |
+
+### TableCell
+
+Where: `TableRow`. A `TableCell` anywhere else is an error. Children: blocks and loose inline content. Plus all run style props.
+
+| prop                 | type                                           | notes                                                                            |
+| -------------------- | ---------------------------------------------- | -------------------------------------------------------------------------------- |
+| `colSpan`, `rowSpan` | `number`                                       | `rowSpan` merges the cell down. Leave the cells it covers out of the rows below. |
+| `background`         | `Color`                                        |                                                                                  |
+| `verticalAlign`      | `'top' \| 'center' \| 'bottom'`                |                                                                                  |
+| `width`              | `Length`                                       |                                                                                  |
+| `borders`            | `{ top?, right?, bottom?, left? }` or `'none'` |                                                                                  |
+| `padding`            | `Length` or per side                           |                                                                                  |
+| `align`              | `'left' \| 'center' \| 'right' \| 'justify'`   | Alignment of paragraphs created for loose text.                                  |
+
+## Media and fields
+
+### Image
+
+Where: a block container (block), or inside a paragraph, run or link (inline). No children.
+
+| prop              | type                                          | notes                                                                 |
+| ----------------- | --------------------------------------------- | --------------------------------------------------------------------- |
+| `src`             | `string \| Uint8Array \| ArrayBuffer \| Blob` | Required. A data URI, an `http(s)` URL or the bytes.                  |
+| `fallback`        | same as `src`                                 | Required for SVG: a raster image.                                     |
+| `type`            | `'png' \| 'jpg' \| 'gif' \| 'bmp' \| 'svg'`   | Overrides the type read from the bytes.                               |
+| `width`, `height` | `Length`                                      | One side keeps the aspect ratio. Neither: the image's size at 96 dpi. |
+| `alt`, `title`    | `string`                                      | Word's alt text and title.                                            |
+| `align`           | `'left' \| 'center' \| 'right'`               | Only for an image placed directly in a block container.               |
+
+### TableOfContents
+
+Where: a block container. No children.
+
+| prop         | type               | default  |
+| ------------ | ------------------ | -------- |
+| `title`      | `string`           | –        |
+| `levels`     | `[number, number]` | `[1, 3]` |
+| `hyperlinks` | `boolean`          | `true`   |
+
+## Preview and download
+
+### DocxPreview
+
+See [Preview](/guides/preview) for the props and slots.
+
+### DocxDownloadButton
+
+| prop            | type                      | default           |
+| --------------- | ------------------------- | ----------------- |
+| `document`      | `Component`               | required          |
+| `documentProps` | `Record<string, unknown>` | –                 |
+| `fileName`      | `string`                  | `'document.docx'` |
+
+Builds the file on click. Emits `done(blob)` and `error(error)`. The default slot receives `{ loading, error }` and replaces the "Download DOCX" label.

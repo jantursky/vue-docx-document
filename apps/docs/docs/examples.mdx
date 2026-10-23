@@ -1,0 +1,30 @@
+---
+title: Examples
+description: Live documents next to the files that produce them.
+sidebar:
+  order: 4
+---
+
+Each preview runs a page component that shows a document component. Switch to the **Code** tab to read it. The same files run in the demo app under `apps/example`.
+
+## Minimal
+
+One section and one prop. Type a name and the preview draws it again after a short debounce; the button writes the .docx.
+
+<Component path="MinimalExample" />
+
+## Report
+
+Headings, nested lists, a table with a repeating header row, an image, a table of contents, a footnote, and a header and footer with page numbers. Move the slider to add sections.
+
+<Component path="ReportExample" />
+
+## Invoice
+
+A reactive form drives the document: a table with `v-for` rows, a `v-if` stamp and a computed total.
+
+<Component path="InvoiceExample" />
+
+## One invoice, two formats
+
+The demo app builds the same invoice as a Word file and a PDF from one template. Open it at [vue-docx-document.vercel.app](https://vue-docx-document.vercel.app) and see [One template, two formats](/guides/one-template-two-formats).

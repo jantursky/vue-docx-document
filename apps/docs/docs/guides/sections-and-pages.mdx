@@ -1,0 +1,74 @@
+---
+title: Sections and pages
+description: Page size, margins, orientation, columns, headers and footers, and page numbers.
+---
+
+A `<Document>` holds one or more `<Section>`s. A section is a run of pages with the same page setup, headers and footers. Start a new section when any of those change.
+
+```vue
+<Document>
+  <Section size="A4" :margin="{ top: '25mm', bottom: '25mm', left: '20mm', right: '20mm' }">
+    <Paragraph>Portrait pages.</Paragraph>
+  </Section>
+  <Section size="A4" orientation="landscape">
+    <Paragraph>Landscape pages.</Paragraph>
+  </Section>
+</Document>
+```
+
+## Size, margins and orientation
+
+`size` is `A3`, `A4` (the default), `A5`, `Letter`, `Legal`, `Tabloid`, or `{ width, height }` with any [lengths](/reference/types#length). `orientation` is `portrait` or `landscape`.
+
+`margin` is one length for all sides, or an object with `top`, `right`, `bottom`, `left`, plus `header`, `footer` and `gutter`. The default is one inch.
+
+## Columns
+
+```vue
+<Section :columns="{ count: 2, space: '12mm', separator: true }">
+  <Paragraph>…</Paragraph>
+  <ColumnBreak />
+  <Paragraph>Starts in the second column.</Paragraph>
+</Section>
+```
+
+`columns` also takes a plain number. Use `<ColumnBreak />` inside a paragraph to move to the next column.
+
+## How a section starts
+
+`type` is `nextPage` (the default), `continuous`, `evenPage` or `oddPage`. A `continuous` section lets you switch column count in the middle of a page.
+
+`pageNumberStart` and `pageNumberFormat` (`decimal`, `upperRoman`, `lowerRoman`, `upperLetter`, `lowerLetter`) control numbering. A front matter section in roman numerals followed by a body section that restarts at 1 is two sections.
+
+## Headers and footers
+
+`<Header>` and `<Footer>` are children of a `<Section>` and hold blocks. They apply to every page of that section.
+
+```vue
+<Section>
+  <Header>
+    <Paragraph align="right" color="#6f7988">Quarterly report</Paragraph>
+  </Header>
+  <Footer>
+    <Paragraph align="center">Page <PageNumber /> of <PageNumber type="total" /></Paragraph>
+  </Footer>
+  …
+</Section>
+```
+
+### First and even pages
+
+`type` is `default`, `first` or `even`.
+
+```vue
+<Header type="first"><Paragraph heading="title">Quarterly report</Paragraph></Header>
+<Header><Paragraph>Quarterly report</Paragraph></Header>
+```
+
+A `type="first"` header or footer gives that section a different first page. A `type="even"` one turns on separate odd and even pages for the whole document, and the `default` header then serves odd pages.
+
+## Page numbers
+
+`<PageNumber>` is an inline element that Word fills in. `type` is `current` (the default), `total` for the pages in the document, or `section-total` for the pages in the section. It takes run props, so it can be bold or grey like any other text.
+
+The [preview](/guides/preview) fills page numbers in too.

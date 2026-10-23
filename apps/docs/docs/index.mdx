@@ -1,0 +1,62 @@
+---
+title: Introduction
+description: Write Word (.docx) documents as Vue 3 components.
+---
+
+vue-docx-document turns Vue components into Word files. You write `<Document>`, `<Section>`, `<Paragraph>` and `<Table>` in a template, with props, `v-for`, `v-if` and computed values, and get a real `.docx` file in the browser or in Node.
+
+The current version is {{version}}. See the [changelog](/changelog) for what each release changed.
+
+## Why
+
+Vue has viewers and editors for Word files, but no declarative way to generate one. The [`docx`](https://docx.js.org) package can write them, but it is imperative: you build `new Paragraph({ children: [new TextRun(...)] })` objects by hand, loop with `map()`, and keep numbering and footnote ids in sync yourself. A report with a table, a header and a list is a long function that looks nothing like the page it produces.
+
+A Vue component already describes a tree that changes with data. This library renders that tree into a document model and hands the model to `docx`, so the template reads like the result.
+
+```vue HelloDocument.vue
+<script setup lang="ts">
+import { Document, Paragraph, Section, TextRun } from 'vue-docx-document'
+
+defineProps<{ name: string }>()
+</script>
+
+<template>
+  <Document title="Hello" font="Calibri" :font-size="11">
+    <Section>
+      <Paragraph :heading="1">Hello, {{ name }}</Paragraph>
+      <Paragraph> This file was written by <TextRun bold>Vue components</TextRun>. </Paragraph>
+    </Section>
+  </Document>
+</template>
+```
+
+```ts
+import { downloadDocx } from 'vue-docx-document'
+
+import HelloDocument from './HelloDocument.vue'
+
+await downloadDocx(HelloDocument, { name: 'Ada' }, 'hello.docx')
+```
+
+## What you get
+
+- Every part of the model is a component: sections, headers and footers, paragraphs, runs, lists, tables, images, links, bookmarks, footnotes and a table of contents.
+- Lengths accept points, pixels, inches, centimeters and millimeters.
+- A live HTML preview of the pages, which never loads the `docx` engine.
+- The same code runs in Node. `renderToBuffer()` needs no DOM.
+- Types for every prop, and an escape hatch to the `docx` object when a feature has no component.
+
+<CardGroup cols={2}>
+  <Card title="Getting started" href="/getting-started" icon="rocket">
+    Install the package and write your first document.
+  </Card>
+  <Card title="Examples" href="/examples" icon="play">
+    Live documents next to the files that produce them.
+  </Card>
+  <Card title="One template, two formats" href="/guides/one-template-two-formats" icon="copy">
+    Fill an invoice once and export it as Word and as PDF.
+  </Card>
+  <Card title="Reference" href="/reference/components" icon="book-open">
+    Every component, prop, function and composable.
+  </Card>
+</CardGroup>

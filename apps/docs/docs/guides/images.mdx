@@ -1,0 +1,72 @@
+---
+title: Images
+description: Sources, sizing, SVG with a fallback, alt text and alignment.
+---
+
+```vue
+<Image :src="logoUrl" :width="120" alt="Company logo" />
+```
+
+An `<Image>` is a block when it sits directly in a block container, and inline inside a paragraph, run or link.
+
+## Sources
+
+`src` takes:
+
+- a data URI,
+- an `http(s)` URL, which is fetched (20 MB at most, other schemes are rejected),
+- a `Uint8Array`, an `ArrayBuffer` or a `Blob`.
+
+PNG, JPEG, GIF, BMP and SVG are recognised from the first bytes of the file. Set `type` (`png`, `jpg`, `gif`, `bmp` or `svg`) to override the guess.
+
+With a bundler, `import logo from './logo.png'` gives a URL, which works in the browser. In Node, read the file and pass the bytes:
+
+```ts
+import { readFile } from 'node:fs/promises'
+
+const logo = new Uint8Array(await readFile('logo.png'))
+await renderToBuffer(InvoiceDocument, { logo })
+```
+
+An image that cannot be loaded makes the render fail, so the document does not silently lose its logo.
+
+## Size
+
+| `width` | `height` | result                                   |
+| ------- | -------- | ---------------------------------------- |
+| set     | set      | Used as given.                           |
+| set     | –        | Height follows the image's aspect ratio. |
+| –       | set      | Width follows the image's aspect ratio.  |
+| –       | –        | The image's own size at 96 dpi.          |
+
+Numbers are points. The aspect ratio comes from the PNG, JPEG, GIF or BMP header, or from the SVG's `width`, `height` or `viewBox`.
+
+## SVG
+
+Word versions that cannot draw SVG show a raster image instead, so an SVG needs a `fallback`:
+
+```vue
+<Image :src="chartSvg" :fallback="chartPng" :width="320" alt="Revenue by quarter" />
+```
+
+## Alt text and alignment
+
+`alt` becomes Word's alt text, and `title` its title. Write `alt` for anything that is not decoration.
+
+A block-level image takes `align` (`left`, `center` or `right`):
+
+```vue
+<Image :src="signature" :width="160" align="right" alt="Signature" />
+```
+
+## Inline images
+
+Inside a paragraph, an image sits in the line of text:
+
+```vue
+<Paragraph>
+  Status: <Image :src="check" :width="12" :height="12" alt="Done" /> done
+</Paragraph>
+```
+
+Floating images and text wrapping are not supported. See [feature coverage](/reference/feature-coverage).

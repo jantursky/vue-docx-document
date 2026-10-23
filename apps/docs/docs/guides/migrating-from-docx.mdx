@@ -1,0 +1,52 @@
+---
+title: Migrating from docx
+description: Map imperative docx code to components, prop by prop.
+---
+
+This library writes its files with `docx`, so the output is the same kind of file. What changes is how you describe it: a tree of components instead of nested objects, and CSS-like units instead of twips and half-points.
+
+| docx                                                        | vue-docx-document                                       |
+| ----------------------------------------------------------- | ------------------------------------------------------- |
+| `new Document({ sections: [{ children }] })`                | `<Document><Section>…</Section></Document>`             |
+| `new Paragraph({ children: [new TextRun('Hi')] })`          | `<Paragraph>Hi</Paragraph>`                             |
+| `new TextRun({ text, bold: true })`                         | `<TextRun bold>text</TextRun>`                          |
+| `italics: true`                                             | `italic`                                                |
+| `size: 24` (half-points)                                    | `:size="12"` (points)                                   |
+| `color: 'FF0000'`                                           | `color="#ff0000"` (also `red`)                          |
+| `heading: HeadingLevel.HEADING_1`                           | `:heading="1"`                                          |
+| `alignment: AlignmentType.CENTER`                           | `align="center"`                                        |
+| `spacing: { before: 240, after: 120 }` (twips)              | `space-before="12pt" space-after="6pt"`                 |
+| `spacing: { line: 276 }`                                    | `:line-height="1.15"`                                   |
+| `indent: { left: 720, hanging: 360 }`                       | `indent="0.5in" hanging="0.25in"`                       |
+| `new Tab()` / `tabStops`                                    | `<Tab />` / `:tab-stops`                                |
+| `new PageBreak()`                                           | `<PageBreak />`                                         |
+| `new Table({ rows: items.map(…) })`                         | `<TableRow v-for="item in items">`                      |
+| `new TableRow({ tableHeader: true })`                       | `<TableRow header>`                                     |
+| `columnSpan` / `rowSpan`                                    | `:col-span` / `:row-span`                               |
+| `width: { size: 100, type: WidthType.PERCENTAGE }`          | `width="100%"`                                          |
+| `new ImageRun({ data, transformation: { width, height } })` | `<Image :src="data" :width :height alt="…" />`          |
+| `new ExternalHyperlink({ link, children })`                 | `<Link href="…">`                                       |
+| `new Bookmark(…)` and `InternalHyperlink`                   | `<Bookmark id>` and `<Link anchor>`                     |
+| `footnotes: { 1: { children } }`, `FootnoteReferenceRun`    | `<Footnote>…</Footnote>` at the reference               |
+| `headers: { default, first, even }`                         | `<Header type="…">`                                     |
+| `footers` with `PageNumber.CURRENT`                         | `<Footer><PageNumber /></Footer>`                       |
+| `new TableOfContents('Contents', { … })`                    | `<TableOfContents title="Contents" :levels="[1, 3]" />` |
+| `numbering: { config }` and `numbering: { reference }`      | `<List>`, `<List ordered>`                              |
+| `properties: { page: { size, margin } }`                    | `<Section size margin orientation>`                     |
+| `styles: { paragraphStyles }`                               | `Document`'s `styles`, with `style-id` on a paragraph   |
+| `Packer.toBuffer(doc)` / `toBlob` / `toBase64String`        | `renderToBuffer` / `renderToBlob` / `renderToBase64`    |
+
+## What gets easier
+
+- **Loops and conditions** are `v-for` and `v-if`. No `flatMap` to build row arrays.
+- **Numbering and footnote ids** are assigned for you. Each top-level `<List>` restarts, and footnotes count in document order.
+- **Defaults cascade** from `Document` through tables and lists to runs, so you set `font` once.
+- **Image sizes** follow the file's aspect ratio when you give one side.
+
+## What stays imperative
+
+Features without a component are listed under [feature coverage](/reference/feature-coverage). For those, call `createDocx(Doc, props).toDocx()` to get the `docx` `Document`, or keep that part of your pipeline on `docx` directly.
+
+## Units
+
+`docx` uses twips (1/20 pt), half-points for fonts and eighths of a point for borders. Here, numbers are points everywhere, and strings take `pt`, `px`, `in`, `cm` or `mm`. Convert with `toPoints()` when you need the number.

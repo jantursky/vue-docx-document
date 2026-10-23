@@ -1,0 +1,95 @@
+---
+title: Text and paragraphs
+description: Runs, the style cascade, headings, spacing, indents and tab stops.
+---
+
+A `<Paragraph>` is a block. Inside it, text and `<TextRun>`s are inline. A `<TextRun>` carries character formatting for the text it wraps.
+
+```vue
+<Paragraph>
+  Plain text, <TextRun bold>bold</TextRun>, <TextRun italic color="#c4321f">red italics</TextRun>
+  and <TextRun underline="wave">a wavy underline</TextRun>.
+</Paragraph>
+```
+
+Run props are flags and values: `bold`, `italic`, `underline` (`true` or a style such as `double`), `strike`, `doubleStrike`, `color`, `highlight`, `shading`, `font`, `size` in points, `superscript`, `subscript`, `allCaps`, `smallCaps` and `characterSpacing`. The [reference](/reference/components#run-style) lists them with their types.
+
+A space between two runs on one line is kept, so `<TextRun bold>Total</TextRun> <TextRun>due</TextRun>` reads "Total due".
+
+## The cascade
+
+Every run prop can also be set higher up. The nearest value wins:
+
+1. `Document` (`font`, `fontSize`, `color`, `lineHeight`)
+2. `Table`, then `TableRow`, then `TableCell`
+3. `List`, then `ListItem` or `Paragraph`
+4. `Link`
+5. `TextRun`
+
+```vue
+<Paragraph color="#444444" :size="10">
+  Grey and small, <TextRun bold>still grey and small, but bold</TextRun>,
+  <TextRun color="black" :size="14">black and larger</TextRun>.
+</Paragraph>
+```
+
+`Section`, `Header` and `Footer` do not carry run props. Set them on the paragraphs inside, or on `Document`.
+
+## Headings
+
+`:heading` maps a paragraph to one of Word's built-in styles: `'title'` or `1` to `6`. Word's navigation pane and table of contents pick them up.
+
+```vue
+<Paragraph heading="title">Quarterly report</Paragraph>
+<Paragraph :heading="1">Summary</Paragraph>
+<Paragraph :heading="2">Revenue</Paragraph>
+```
+
+To change how headings look, use `Document`'s `headings` prop. See [Styles](/guides/styles).
+
+## Alignment, spacing and indents
+
+| prop                          | what it does                                                        |
+| ----------------------------- | ------------------------------------------------------------------- |
+| `align`                       | `left`, `center`, `right` or `justify`.                             |
+| `space-before`, `space-after` | Space around the paragraph, as a [length](/reference/types#length). |
+| `line-height`                 | A multiple of the font's line height, such as `1.15`.               |
+| `indent`, `indent-right`      | Left and right indent.                                              |
+| `first-line`, `hanging`       | Indent the first line, or all lines except the first.               |
+| `keep-next`, `keep-lines`     | Keep with the next paragraph, or keep its lines together.           |
+| `page-break-before`           | Start the paragraph on a new page.                                  |
+| `border`, `background`        | Per-side borders and a fill color.                                  |
+
+Numbers are points. Strings take a unit:
+
+```vue
+<Paragraph align="justify" space-after="6pt" :line-height="1.3" indent="0.5in" first-line="12mm">…</Paragraph>
+```
+
+Borders take one object per side:
+
+```vue
+<Paragraph :border="{ bottom: { style: 'single', size: 1, color: '#cad0d9', space: 4 } }">Section title</Paragraph>
+```
+
+## Breaks and tabs
+
+`<Break />` is a line break inside a paragraph. A line feed (`\n`) in the text does the same, so text from a `<textarea>` keeps its lines in Word and in the preview. `<Tab />` jumps to the next tab stop. `<PageBreak />` starts a new page and may sit between blocks or inside a paragraph. `<ColumnBreak />` moves to the next column in a [multi-column section](/guides/sections-and-pages#columns).
+
+Tab stops belong to the paragraph. A right-aligned stop with a dot leader makes a table-of-contents line or a price list:
+
+```vue
+<Paragraph :tab-stops="[{ position: '6in', type: 'right', leader: 'dot' }]">
+  Consulting<Tab />€1,200.00
+</Paragraph>
+```
+
+`type` is `left`, `center`, `right` or `decimal`. `leader` is `none`, `dot`, `hyphen` or `underscore`.
+
+## Blank lines
+
+An empty paragraph keeps its height. `<Paragraph :size="20" />` is a blank line as tall as 20pt text, which is a simple way to add space where `space-after` does not fit.
+
+## Loose text
+
+Text and inline elements placed directly in a block container (`Section`, `Header`, `Footer`, `TableCell`, `Footnote`) are wrapped in an implicit paragraph. Neighbouring loose pieces share one paragraph. Use an explicit `<Paragraph>` as soon as you need alignment, spacing or a heading.

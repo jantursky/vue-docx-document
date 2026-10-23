@@ -1,0 +1,40 @@
+---
+title: Feature coverage
+description: Which Word features the components cover, and which they do not.
+---
+
+The components cover the parts of the `docx` 9.x surface that documents are made of. The list below is the 1.0 scope.
+
+## Covered
+
+- **Document**: properties; default font, size, color, line height and paragraph spacing; styles for Title and Heading 1 to 6; raw `docx` styles.
+- **Sections**: page sizes (A3, A4, A5, Letter, Legal, Tabloid, custom), orientation, margins, columns, section type, page number start and format.
+- **Headers and footers**: default, first page and even pages.
+- **Paragraphs**: headings, style id, alignment, spacing, line height, indents, keep with next, keep lines together, page break before, borders, background, tab stops.
+- **Runs**: bold, italic, underline styles, strike, double strike, color, highlight, shading, font, size, superscript, subscript, all caps, small caps, character spacing.
+- **Breaks and fields**: line breaks, tabs, page and column breaks, page numbers (current, total, section total).
+- **Links**: external and internal hyperlinks, bookmarks.
+- **Lists**: bulleted and numbered lists with nesting.
+- **Tables**: column widths, table width, fixed or auto layout, alignment, borders, cell padding, repeating header rows, rows that do not split, row height, column and row spans, cell background, vertical alignment.
+- **Images**: PNG, JPEG, GIF, BMP and SVG with a fallback, inline and block.
+- **Footnotes** and a **table of contents**.
+
+## Not covered
+
+| feature                              | note                             |
+| ------------------------------------ | -------------------------------- |
+| Charts                               | `docx/charts` is not wrapped.    |
+| Shapes, text frames, floating images | Images are inline or block only. |
+| Math                                 |                                  |
+| Watermarks                           |                                  |
+| Comments and tracked changes         |                                  |
+| Checkboxes                           |                                  |
+| Endnotes                             | Footnotes only.                  |
+| Bibliography and citations           |                                  |
+| Embedded files, macros               |                                  |
+| Custom numbering definitions         | Beyond the `List` props.         |
+| Document protection                  |                                  |
+| HTML import                          | `docx/html` is not wrapped.      |
+| Reading `.docx` files                | The library only writes.         |
+
+For a missing feature, `createDocx(Doc, props).toDocx()` returns the `docx` `Document` built from your components. See [Functions](/reference/functions).

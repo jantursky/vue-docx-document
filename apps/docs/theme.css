@@ -1,0 +1,33 @@
+/* Docs theme, from design/tokens.css. See design/DESIGN.md. */
+:root {
+  --blume-background: #ffffff;
+  --blume-foreground: #1c1d1f;
+  --blume-muted: #f4f5f6;
+  --blume-muted-foreground: #6f7988;
+  --blume-border: #e4e7ec;
+  --blume-accent: #266df0;
+  --blume-accent-foreground: #ffffff;
+  --blume-action: #232529;
+  --blume-action-foreground: #ffffff;
+  --blume-code-background: #f4f5f6;
+  --blume-radius: 10px;
+}
+
+:root[data-theme='dark'] {
+  --blume-background: #0e0f11;
+  --blume-foreground: #eceef1;
+  --blume-muted: #18191d;
+  --blume-muted-foreground: #a3abb7;
+  --blume-border: #2a2d33;
+  --blume-accent: #5b8ff5;
+  --blume-accent-foreground: #0e0f11;
+  --blume-action: #f4f5f6;
+  --blume-action-foreground: #101113;
+  --blume-code-background: #141518;
+}
+
+h1,
+h2,
+h3 {
+  letter-spacing: -0.02em;
+}

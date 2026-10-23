@@ -1,0 +1,68 @@
+---
+title: Types
+description: Length, Color, the prop types and a summary of the resolved model.
+---
+
+All types are exported from `vue-docx-document`. Import them with `import type`.
+
+## Length
+
+```ts
+type Length = number | `${number}${'pt' | 'px' | 'in' | 'cm' | 'mm'}`
+```
+
+A number is points. `px` are CSS pixels, 96 to the inch. `toPoints('1in')` is `72`.
+
+Font `size` is in points, as in Word. `lineHeight` is a multiple, not a length.
+
+## Color
+
+```ts
+type Color = string
+```
+
+`#rgb`, `#rrggbb`, `rrggbb`, or one of the 16 CSS basic names such as `black`, `white`, `red` or `navy`. The type is a plain string, so a bad value is caught at render time: anything else throws.
+
+## Prop types
+
+| type                                                                                                                                                                                                                                                         | values                                                                                          |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| `Align`                                                                                                                                                                                                                                                      | `'left' \| 'center' \| 'right' \| 'justify'`                                                    |
+| `HeadingLevel`                                                                                                                                                                                                                                               | `'title' \| 1 \| 2 \| 3 \| 4 \| 5 \| 6`                                                         |
+| `UnderlineStyle`                                                                                                                                                                                                                                             | `'single' \| 'double' \| 'thick' \| 'dotted' \| 'dash' \| 'wave' \| 'words'`                    |
+| `HighlightColor`                                                                                                                                                                                                                                             | Word's 16 highlight colors. See [Run style](/reference/components#run-style).                   |
+| `PageSize`                                                                                                                                                                                                                                                   | `'A3' \| 'A4' \| 'A5' \| 'Letter' \| 'Legal' \| 'Tabloid' \| { width: Length; height: Length }` |
+| `PageNumberFormat`                                                                                                                                                                                                                                           | `'decimal' \| 'upperRoman' \| 'lowerRoman' \| 'upperLetter' \| 'lowerLetter'`                   |
+| `ListFormat`                                                                                                                                                                                                                                                 | `'decimal' \| 'lowerLetter' \| 'upperLetter' \| 'lowerRoman' \| 'upperRoman'`                   |
+| `ImageSource`                                                                                                                                                                                                                                                | `string \| Uint8Array \| ArrayBuffer \| Blob`                                                   |
+| `ImageType`                                                                                                                                                                                                                                                  | `'png' \| 'jpg' \| 'gif' \| 'bmp' \| 'svg'`                                                     |
+| `RunStyle`, `ParagraphStyle`                                                                                                                                                                                                                                 | The shared run and paragraph props.                                                             |
+| `DocumentProps`, `SectionProps`, `HeaderFooterProps`, `ParagraphProps`, `TextRunProps`, `LinkProps`, `BookmarkProps`, `PageNumberProps`, `ImageProps`, `TableProps`, `TableRowProps`, `TableCellProps`, `ListProps`, `ListItemProps`, `TableOfContentsProps` | The props of the component with the same name.                                                  |
+
+### Borders
+
+```ts
+interface BorderSide {
+  style?: 'single' | 'double' | 'dotted' | 'dashed' | 'thick' | 'none'
+  size?: number // points, default 0.5
+  color?: Color
+  space?: number // gap to the content, in points
+}
+```
+
+`Sides<T>` is `{ top?: T; right?: T; bottom?: T; left?: T }`. `TableBorders` adds `insideH` and `insideV`.
+
+## The model
+
+`renderToModel()`, `useDocxModel()` and `createDocx().toModel()` return a `DocxModel`: the document after units are converted to points, colors to `#rrggbb`, the style cascade applied, implicit paragraphs created, lists and footnotes numbered, and images loaded and sized. Defaults are always filled in: Calibri, 11pt, a line height of 1.15 and 8pt after paragraphs, unless the `Document` sets them. An empty paragraph carries a `mark` with the run style that gives its blank line its height. The preview and the writer both read it.
+
+| type           | holds                                                                                                                                                 |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DocxModel`    | `meta`, `defaults`, `headings`, `styles`, `sections`, `footnotes`, `lists`, `evenAndOddHeaders`, `updateFields`.                                      |
+| `SectionModel` | `page`, `margin`, `columns`, `type`, `titlePage`, page numbering, `headers`, `footers` (each with `default`, `first`, `even`), and `children` blocks. |
+| `BlockModel`   | `ParagraphModel`, `TableModel` or `TocModel`, told apart by `kind`.                                                                                   |
+| `InlineModel`  | `TextModel`, `BreakModel`, `PageNumberModel`, `ImageModel`, `LinkModel`, `BookmarkModel` or `FootnoteRefModel`, told apart by `kind`.                 |
+| `ImageBytes`   | The bytes and type of an image, used for an SVG's raster fallback.                                                                                    |
+| `ListModel`    | An ordered or bulleted list with per-level format, start, text and indents.                                                                           |
+
+Also exported: `DocxInstance`, `UseDocxOptions`, `UseDocxReturn`, `UseDocxModelOptions`, `UseDocxModelReturn`, `WriteOptions`, `OutputType` and `OutputTypes`.

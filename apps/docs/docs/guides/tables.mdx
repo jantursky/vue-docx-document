@@ -1,0 +1,78 @@
+---
+title: Tables
+description: Column widths, header rows, spans, borders and cell formatting.
+---
+
+A `<Table>` holds `<TableRow>`s, and a row holds `<TableCell>`s. A cell is a block container, so it may hold paragraphs, lists, images and loose text.
+
+```vue
+<Table :column-widths="['3in', '1in', '1.5in']">
+  <TableRow header bold background="#f4f5f6">
+    <TableCell>Item</TableCell>
+    <TableCell align="right">Qty</TableCell>
+    <TableCell align="right">Price</TableCell>
+  </TableRow>
+  <TableRow v-for="line in lines" :key="line.id">
+    <TableCell>{{ line.name }}</TableCell>
+    <TableCell align="right">{{ line.qty }}</TableCell>
+    <TableCell align="right">{{ line.price }}</TableCell>
+  </TableRow>
+</Table>
+```
+
+A `<TableRow>` outside a `<Table>`, or a `<TableCell>` outside a `<TableRow>`, is an error.
+
+Paragraphs in cells have no space after them unless you set one.
+
+## Width and layout
+
+- `column-widths` sets each column and fixes the column count.
+- `width` is a length or a percentage of the text width. The default is `'100%'`.
+- `layout` is `fixed` or `auto`. It defaults to `fixed` when `column-widths` is set, and `auto` otherwise.
+- `align` positions a table narrower than the page: `left`, `center` or `right`.
+
+## Header rows
+
+`<TableRow header>` repeats at the top of every page the table spans. `cant-split` keeps a row on one page. `height` sets a row height.
+
+## Spans
+
+```vue
+<TableRow>
+  <TableCell :col-span="2">Subtotal</TableCell>
+  <TableCell align="right">€1,500.00</TableCell>
+</TableRow>
+<TableRow>
+  <TableCell :row-span="2" vertical-align="center">Support</TableCell>
+  <TableCell>Monthly</TableCell>
+</TableRow>
+<TableRow>
+  <TableCell>Yearly</TableCell>
+</TableRow>
+```
+
+Leave the cells a `row-span` covers out of the rows below, as above.
+
+## Borders and padding
+
+By default a table has 0.5pt single lines. Pass `borders="none"` to remove them, or an object. An object draws only the sides it names, so name them all for a full grid:
+
+```vue
+<Table
+  :borders="{
+    top: { style: 'single', size: 1, color: '#1c1d1f' },
+    bottom: { style: 'single', size: 1, color: '#1c1d1f' },
+    insideH: { style: 'single', size: 0.5, color: '#e4e7ec' },
+    insideV: { style: 'none' },
+  }"
+  cell-padding="6pt"
+>
+  …
+</Table>
+```
+
+A `<TableCell>` can override with its own `borders` and `padding`. A border side takes `style` (`single`, `double`, `dotted`, `dashed`, `thick`, `none`), `size` in points, `color` and `space`.
+
+## Formatting
+
+Run props on `<Table>`, `<TableRow>` and `<TableCell>` cascade into the text inside, nearest first. `background` and `vertical-align` (`top`, `center`, `bottom`) are set on the cell, and `background` also on a row. `align` on a cell aligns the paragraphs the cell creates for loose text.

@@ -1,0 +1,35 @@
+---
+title: Links and bookmarks
+description: External links, links inside the document and the schemes that are allowed.
+---
+
+## External links
+
+```vue
+<Paragraph>
+  Read the <Link href="https://docx.js.org">docx docs</Link> or write to
+  <Link href="mailto:hello@example.com">hello@example.com</Link>.
+</Paragraph>
+```
+
+`href` may use `http`, `https`, `mailto` or `tel`. Any other scheme warns once in the console, and the text is rendered without a link.
+
+A link looks like a link by default: color `#0563c1` and a single underline. Run props on `<Link>` override that.
+
+```vue
+<Link href="https://example.com" color="#266df0" :underline="false">Plain blue</Link>
+```
+
+A `<Link>` holds text and inline elements, but not another `<Link>`.
+
+## Links inside the document
+
+Mark the target with `<Bookmark id>` and point at it with `anchor`:
+
+```vue
+<Paragraph>See <Link anchor="terms">the terms</Link> on the last page.</Paragraph>
+…
+<Paragraph :heading="2"><Bookmark id="terms">Terms</Bookmark></Paragraph>
+```
+
+Word has rules for bookmark names, and the library enforces them instead of letting Word drop the bookmark: an id starts with a letter, holds only letters, digits and underscores, is at most 40 characters long, and is unique in the document. Anything else throws when the document renders. A `<Link anchor>` that matches no bookmark only warns.
