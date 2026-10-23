@@ -1,3 +1,5 @@
+import { isBoolean, isDate, isNumber, isOneOf, isRaw, isString, record, strings } from '../validate'
+
 export type Currency = 'EUR' | 'CZK' | 'USD' | 'GBP'
 export type Language = 'en' | 'sk'
 export type PaymentMethod = 'transfer' | 'card' | 'cash'
@@ -8,11 +10,11 @@ export interface Party {
   postalCode: string
   city: string
   country: string
-  /** Company registration number (IČO). */
+  /** Company registration number. */
   companyId: string
-  /** Tax ID (DIČ). */
+  /** Tax ID. */
   taxId: string
-  /** VAT ID (IČ DPH). */
+  /** VAT ID. */
   vatId: string
   email: string
   phone: string
@@ -84,34 +86,34 @@ export const sampleInvoice = (today = new Date()): Invoice => ({
   currency: 'EUR',
   language: 'en',
   seller: {
-    name: 'Apptiary s.r.o.',
-    street: 'Hlavná 12',
-    postalCode: '811 01',
-    city: 'Bratislava',
-    country: 'Slovakia',
-    companyId: '12345678',
-    taxId: '2020123456',
-    vatId: 'SK2020123456',
-    email: 'billing@apptiary.example',
-    phone: '+421 900 123 456',
+    name: 'Brightline Studio Ltd.',
+    street: '14 Merrion Square',
+    postalCode: 'D02 XY45',
+    city: 'Dublin 2',
+    country: 'Ireland',
+    companyId: '582417',
+    taxId: '6388047V',
+    vatId: 'IE6388047V',
+    email: 'accounts@brightline.example',
+    phone: '+353 1 555 0142',
   },
   buyer: {
-    name: 'Northwind Traders GmbH',
-    street: 'Friedrichstraße 68',
-    postalCode: '10117',
-    city: 'Berlin',
-    country: 'Germany',
-    companyId: 'HRB 123456',
+    name: 'Harbor & Finch Ltd.',
+    street: '22 Wharf Lane',
+    postalCode: 'EC3R 7AA',
+    city: 'London',
+    country: 'United Kingdom',
+    companyId: '01234567',
     taxId: '',
-    vatId: 'DE123456789',
-    email: 'ap@northwind.example',
+    vatId: 'GB123456789',
+    email: 'payables@harborfinch.example',
     phone: '',
   },
   payment: {
     method: 'transfer',
-    bankName: 'Tatra banka, a.s.',
-    iban: 'SK31 1100 0000 0026 1234 5678',
-    bic: 'TATRSKBX',
+    bankName: 'Bank of Ireland',
+    iban: 'IE70 BOFI 9000 1712 3456 78',
+    bic: 'BOFIIE2D',
     variableSymbol: `${today.getFullYear()}0042`,
     qr: true,
   },
@@ -121,7 +123,7 @@ export const sampleInvoice = (today = new Date()): Invoice => ({
     { id: 1, description: 'Discovery workshop', quantity: 1, unit: 'day', unitPrice: 900, discount: 0, vatRate: 23 },
     {
       id: 2,
-      description: 'Vue 3 front-end development',
+      description: 'Front-end development',
       quantity: 64,
       unit: 'h',
       unitPrice: 75,
@@ -144,11 +146,11 @@ export const sampleInvoice = (today = new Date()): Invoice => ({
       unit: 'pc',
       unitPrice: 39.9,
       discount: 0,
-      vatRate: 5,
+      vatRate: 9,
     },
   ],
   notes: 'Thank you for your business. Please quote the invoice number with your payment.',
-  issuedBy: 'Ján Novák',
+  issuedBy: 'Maeve Brennan',
   accent: '#1f4e79',
   logo: null,
 })
@@ -165,62 +167,13 @@ export const blankInvoice = (today = new Date()): Invoice => ({
   logo: null,
 })
 
-type Raw = Record<string, unknown>
-
-const isRaw = (value: unknown): value is Raw => typeof value === 'object' && value !== null && !Array.isArray(value)
-
 const CURRENCIES: readonly Currency[] = ['EUR', 'CZK', 'USD', 'GBP']
 const LANGUAGES: readonly Language[] = ['en', 'sk']
 const METHODS: readonly PaymentMethod[] = ['transfer', 'card', 'cash']
 
-const isIsoDate = (value: string) =>
-  value === '' || (/^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`)))
-
-/** Reads `source[key]`: the fallback when the key is missing, `undefined` when the value is wrong. */
-const field = <T>(source: Raw, key: string, fallback: T, valid: (value: unknown) => value is T): T | undefined => {
-  if (!(key in source) || source[key] === undefined) return fallback
-  return valid(source[key]) ? source[key] : undefined
-}
-
-const isString = (value: unknown): value is string => typeof value === 'string'
-const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean'
-const isNumber =
-  (min: number, max = Infinity) =>
-  (value: unknown): value is number =>
-    typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max
-const isOneOf =
-  <T extends string>(options: readonly T[]) =>
-  (value: unknown): value is T =>
-    typeof value === 'string' && options.includes(value as T)
-
-/** Reads every key of `fallback` from `source`, or `undefined` when one is wrong. */
-const record = <T extends object>(
-  source: unknown,
-  fallback: T,
-  valid: { [K in keyof T]: (value: unknown) => value is T[K] },
-  /** Every key must be present, with no fallbacks. */
-  complete = false,
-): T | undefined => {
-  if (!isRaw(source)) return undefined
-  if (complete && !Object.keys(fallback).every((key) => key in source)) return undefined
-  const result: Partial<T> = {}
-  for (const key of Object.keys(fallback) as (keyof T & string)[]) {
-    const value = field(source, key, fallback[key], valid[key])
-    if (value === undefined) return undefined
-    result[key] = value
-  }
-  return result as T
-}
-
-const isDate = (value: unknown): value is string => typeof value === 'string' && isIsoDate(value)
 const isLogo = (value: unknown): value is string | null =>
   value === null || (typeof value === 'string' && /^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=]+$/.test(value))
 const isAccent = (value: unknown): value is string => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value)
-
-const strings = <T extends object>(sample: T) =>
-  Object.fromEntries(Object.keys(sample).map((key) => [key, isString])) as {
-    [K in keyof T]: (value: unknown) => value is T[K]
-  }
 
 /**
  * Turns a parsed JSON value into an invoice, or `null` when any field has the wrong type or a

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import QRCode from 'qrcode'
-import { computed, defineAsyncComponent, reactive, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, ref, watch } from 'vue'
 import { DocxDownloadButton, DocxPreview, saveBlob } from 'vue-docx-document'
 
 import { formatters } from '../invoice/i18n'
@@ -8,42 +8,28 @@ import { InvoiceDocx } from '../invoice/docxDocument'
 import { blankInvoice, parseInvoice, sampleInvoice, type Invoice } from '../invoice/model'
 import { computeTotals, epcPayload, lineTotal } from '../invoice/totals'
 import { useFitScale } from '../ui/fitScale'
+import DecimalInput from '../ui/DecimalInput.vue'
 import PartyFields from './PartyFields.vue'
+import { useDraft } from './useDraft'
 
 // The PDF engine is about 1 MB, so it loads when someone asks for a PDF.
 const PdfPreview = defineAsyncComponent(() => import('./PdfPreview.vue'))
 
-const STORAGE_KEY = 'vue-docx-document:invoice'
-const VAT_RATES = [23, 19, 5, 0]
+const VAT_RATES = [23, 13.5, 9, 0]
 const MAX_LOGO_BYTES = 1_500_000
 
-// The draft survives reloads. Storage can be missing or full, so every access is guarded.
-const load = (): Invoice => {
-  try {
-    const draft = parseInvoice(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null'))
-    if (draft) return draft
-  } catch {
-    // Fall through to the sample.
-  }
-  return sampleInvoice()
-}
-
-const invoice = reactive<Invoice>(load())
-watch(
-  invoice,
-  (value) => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(value))
-    } catch {
-      // Not saved; the editor keeps working.
-    }
-  },
-  { deep: true },
-)
-
-const replace = (next: Invoice) => {
-  Object.assign(invoice, next)
-}
+const {
+  draft: invoice,
+  message,
+  replace,
+  exportJson,
+  importJson,
+} = useDraft<Invoice>({
+  storageKey: 'vue-docx-document:invoice',
+  parse: parseInvoice,
+  sample: sampleInvoice,
+  baseName: () => baseName.value,
+})
 
 const totals = computed(() => computeTotals(invoice))
 const f = computed(() => formatters('en', invoice.currency))
@@ -69,7 +55,7 @@ watch(
 )
 
 const documentProps = computed(() => ({ invoice, qr: qr.value }))
-const baseName = computed(() => `invoice-${invoice.number || 'draft'}`)
+const baseName = computed((): string => `invoice-${invoice.number || 'draft'}`)
 
 type Format = 'docx' | 'pdf'
 const FORMATS: { id: Format; label: string }[] = [
@@ -82,7 +68,6 @@ const scale = useFitScale(viewer)
 const pdfPages = ref<number | null>(null)
 watch(format, () => (pdfPages.value = null))
 
-const message = ref('')
 const pdfBusy = ref(false)
 
 const downloadPdf = async () => {
@@ -110,25 +95,6 @@ const removeItem = (index: number) => {
 const moveItem = (index: number, by: -1 | 1) => {
   const [item] = invoice.items.splice(index, 1)
   if (item) invoice.items.splice(index + by, 0, item)
-}
-
-const exportJson = () => {
-  saveBlob(new Blob([JSON.stringify(invoice, null, 2)], { type: 'application/json' }), `${baseName.value}.json`)
-}
-
-const importJson = async (event: Event) => {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  input.value = ''
-  if (!file) return
-  try {
-    const imported = parseInvoice(JSON.parse(await file.text()))
-    if (!imported) throw new Error('not an invoice')
-    replace(imported)
-    message.value = `Loaded ${file.name}.`
-  } catch {
-    message.value = `${file.name} isn't an invoice exported from this generator.`
-  }
 }
 
 const loadLogo = (event: Event) => {
@@ -236,32 +202,47 @@ const loadLogo = (event: Event) => {
               ><input v-model="item.description" aria-label="Description" placeholder="What you delivered"
             /></span>
             <span role="cell"
-              ><input v-model.number="item.quantity" aria-label="Quantity" type="number" min="0" step="any"
-            /></span>
-            <span role="cell"><input v-model="item.unit" aria-label="Unit" /></span>
-            <span role="cell"
-              ><input v-model.number="item.unitPrice" aria-label="Unit price" type="number" min="0" step="0.01"
+              ><span class="gen-cell-label" aria-hidden="true">Qty</span
+              ><DecimalInput v-model="item.quantity" aria-label="Quantity"
             /></span>
             <span role="cell"
-              ><input v-model.number="item.discount" aria-label="Discount" type="number" min="0" max="100" step="any"
+              ><span class="gen-cell-label" aria-hidden="true">Unit</span><input v-model="item.unit" aria-label="Unit"
             /></span>
-            <span role="cell">
+            <span role="cell"
+              ><span class="gen-cell-label" aria-hidden="true">Price</span
+              ><DecimalInput v-model="item.unitPrice" aria-label="Unit price"
+            /></span>
+            <span role="cell"
+              ><span class="gen-cell-label" aria-hidden="true">Disc. %</span
+              ><DecimalInput v-model="item.discount" aria-label="Discount" :max="100"
+            /></span>
+            <span role="cell"
+              ><span class="gen-cell-label" aria-hidden="true">VAT %</span>
               <select v-model.number="item.vatRate" aria-label="VAT rate" :disabled="!invoice.vatPayer">
                 <option v-for="rate in VAT_RATES" :key="rate" :value="rate">{{ rate }}</option>
               </select>
             </span>
             <span class="gen-amount" role="cell">{{ f.money(lineTotal(item)) }}</span>
             <span class="gen-actions" role="cell">
-              <button type="button" :disabled="index === 0" aria-label="Move up" @click="moveItem(index, -1)">↑</button>
               <button
                 type="button"
+                class="gen-up"
+                :disabled="index === 0"
+                aria-label="Move up"
+                @click="moveItem(index, -1)"
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                class="gen-down"
                 :disabled="index === invoice.items.length - 1"
                 aria-label="Move down"
                 @click="moveItem(index, 1)"
               >
                 ↓
               </button>
-              <button type="button" aria-label="Remove item" @click="removeItem(index)">×</button>
+              <button type="button" class="gen-remove" aria-label="Remove item" @click="removeItem(index)">×</button>
             </span>
           </div>
         </div>

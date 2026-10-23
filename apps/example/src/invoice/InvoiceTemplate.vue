@@ -160,15 +160,15 @@ const footerText = computed(() =>
         <Line caps :size="7.5" :color="LABEL" :after="1">{{ t.bank }}</Line>
         <Line bold>{{ payment.bankName }}</Line>
       </Column>
-      <Column v-if="payment.iban" :width="1">
+      <Column v-if="payment.iban" :width="1.5">
         <Line caps :size="7.5" :color="LABEL" :after="1">{{ t.iban }}</Line>
         <Line bold>{{ payment.iban }}</Line>
       </Column>
-      <Column v-if="payment.bic" :width="1">
+      <Column v-if="payment.bic" :width="0.8">
         <Line caps :size="7.5" :color="LABEL" :after="1">{{ t.bic }}</Line>
         <Line bold>{{ payment.bic }}</Line>
       </Column>
-      <Column v-if="qr" :width="1">
+      <Column v-if="qr" :width="0.8">
         <Img :src="qr" :alt="t.scanToPay" :width="64" :height="64" align="right" />
         <Line :size="6.5" :color="LABEL" align="right">{{ t.scanToPay }}</Line>
       </Column>

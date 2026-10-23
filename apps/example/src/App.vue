@@ -10,19 +10,22 @@ import ThemeToggle from './ui/ThemeToggle.vue'
 
 // The generator brings the QR encoder and the invoice kit, so it loads with its tab.
 const InvoiceGenerator = defineAsyncComponent(() => import('./generator/InvoiceGenerator.vue'))
+const ContractGenerator = defineAsyncComponent(() => import('./generator/ContractGenerator.vue'))
 
 const version = __VUE_DOCX_VERSION__
 const install = 'npm install vue-docx-document'
 
-type Tab = 'overview' | 'generator'
+type Tab = 'overview' | 'generator' | 'contract'
 const tabs: { id: Tab; label: string }[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'generator', label: 'Invoice generator' },
+  { id: 'contract', label: 'Contract generator' },
 ]
 
 // The tab lives in the URL hash, so #generator links straight to it and Back works.
 // Any other hash, such as an example's anchor, belongs to the overview.
-const fromHash = (): Tab => (location.hash === '#generator' ? 'generator' : 'overview')
+const fromHash = (): Tab =>
+  location.hash === '#generator' ? 'generator' : location.hash === '#contract' ? 'contract' : 'overview'
 const tab = ref<Tab>(fromHash())
 const onHashChange = () => {
   tab.value = fromHash()
@@ -46,8 +49,8 @@ const onTabKey = (event: KeyboardEvent, index: number) => {
   tabButtons.value[tabs.indexOf(next)]?.focus()
 }
 
-const openGenerator = () => {
-  select('generator')
+const open = (next: Tab) => {
+  select(next)
   document.getElementById('tabs')?.scrollIntoView({ behavior: 'smooth' })
 }
 </script>
@@ -57,9 +60,10 @@ const openGenerator = () => {
   <header class="nav">
     <div class="container nav-inner">
       <a class="brand" href="./">
-        <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M6 3h8l4 4v14H6z" />
-          <path d="M14 3v4h4M9 12h6M9 16h6" />
+        <svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true">
+          <path d="M20 8h12a24 24 0 0 1 0 48H10V18z" fill="var(--logo-green)" />
+          <path d="M10 18h10V8z" fill="var(--logo-fold)" />
+          <path d="M22 26h12M22 34h16M22 42h9" stroke="#fff" stroke-width="4.5" stroke-linecap="round" />
         </svg>
         vue-docx-document
         <span class="version">{{ version }}</span>
@@ -85,11 +89,16 @@ const openGenerator = () => {
             <code>&lt;DocxPreview&gt;</code> draws it live, and <code>docx</code> writes the .docx, in the browser or in
             Node.
           </p>
+          <p class="lead">
+            Two full demos below: an invoice generator that renders one template as a Word file or a PDF, and a contract
+            generator for Word.
+          </p>
           <div class="actions">
             <a class="button button-primary" href="https://vue-docx-document-docs.vercel.app/getting-started"
               >Get started</a
             >
-            <button type="button" class="button" @click="openGenerator">Try the invoice generator</button>
+            <button type="button" class="button" @click="open('generator')">Try the invoice generator</button>
+            <button type="button" class="button" @click="open('contract')">Try the contract generator</button>
           </div>
           <div class="install">
             <code><span class="install-prompt" aria-hidden="true">$</span> {{ install }}</code>
@@ -142,6 +151,24 @@ const openGenerator = () => {
       </section>
     </div>
 
+    <div v-else-if="tab === 'contract'" id="panel-contract" role="tabpanel" aria-labelledby="tab-contract">
+      <section class="band">
+        <div class="container container-wide">
+          <header class="section-head">
+            <p class="eyebrow">Full demo</p>
+            <h2>Contract generator</h2>
+            <p>
+              A services agreement built from your choices: parties, deliverables, fees, and optional clauses that add
+              or drop numbered clauses, with a schedule, footnote, table of contents, page numbers and a signature
+              block. It only produces a Word file, because contracts get edited and redlined in Word after they are
+              generated. The draft is saved in this browser; export it as JSON to keep it.
+            </p>
+          </header>
+          <ContractGenerator />
+        </div>
+      </section>
+    </div>
+
     <div v-else id="panel-overview" role="tabpanel" aria-labelledby="tab-overview">
       <section class="band">
         <div class="container">
@@ -151,7 +178,7 @@ const openGenerator = () => {
 
       <section class="band band-paper">
         <div class="container">
-          <FormatsSection @open="openGenerator" />
+          <FormatsSection @open="open('generator')" />
         </div>
       </section>
 

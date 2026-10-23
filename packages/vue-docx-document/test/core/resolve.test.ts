@@ -490,7 +490,7 @@ describe('lists', () => {
           'After',
         ]),
       ]),
-      h(List, null, () => h(ListItem, { heading: 1 } as never, () => 'Bullet')),
+      h(List, null, () => h(ListItem, null, () => 'Bullet')),
     ])
     const paragraphs = model.sections[0]!.children as ParagraphModel[]
     expect(paragraphs.map((paragraph) => paragraph.style.list)).toEqual([
@@ -504,7 +504,6 @@ describe('lists', () => {
     ])
     expect(paragraphs[1]!.children[0]).toMatchObject({ style: { color: '#ff0000', bold: true } })
     expect(paragraphs[5]).toMatchObject({ style: { indent: { left: 36 } }, children: [{ text: 'After' }] })
-    expect(paragraphs[6]!.style.heading).toBeUndefined()
     const [ordered, bullets] = model.lists
     expect(ordered).toMatchObject({ id: 'list1', ordered: true, start: 3 })
     expect(ordered!.levels).toHaveLength(9)
@@ -513,6 +512,35 @@ describe('lists', () => {
     expect(ordered!.levels[1]).toEqual({ format: 'bullet', text: '–', start: 1, indent: 72, hanging: 18 })
     expect(ordered!.levels[2]).toMatchObject({ format: 'lowerRoman', text: '%3.' })
     expect(bullets!.levels.slice(0, 4).map((level) => level.text)).toEqual(['•', '◦', '▪', '•'])
+  })
+
+  it('numbers legal lists 1., 1.1., 1.1.1. with nested lists following', async () => {
+    const model = await resolveSection(() =>
+      h(List, { legal: true }, () =>
+        h(ListItem, { heading: 1 }, () => [
+          'Definitions',
+          h(List, { format: 'upperRoman' }, () => h(ListItem, { heading: 2 }, () => 'Terms')),
+          'Continued',
+        ]),
+      ),
+    )
+    const [list] = model.lists
+    expect(list).toMatchObject({ ordered: true, legal: true })
+    expect(list!.levels.slice(0, 3)).toEqual([
+      { format: 'decimal', text: '%1.', start: 1, indent: 36, hanging: 18 },
+      { format: 'decimal', text: '%1.%2.', start: 1, indent: 72, hanging: 36 },
+      { format: 'decimal', text: '%1.%2.%3.', start: 1, indent: 108, hanging: 36 },
+    ])
+    const paragraphs = model.sections[0]!.children as ParagraphModel[]
+    expect(paragraphs.map((paragraph) => [paragraph.style.heading, paragraph.style.list?.level])).toEqual([
+      [1, 0],
+      [2, 1],
+      [undefined, undefined],
+    ])
+    await rejects(
+      () => h(List, null, () => h(ListItem, { heading: 'title' } as never)),
+      '<ListItem heading="title"> is not allowed',
+    )
   })
 
   it('stops at nine levels', async () => {

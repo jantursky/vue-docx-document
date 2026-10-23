@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, nextTick, ref } from 'vue'
 
-import { Document, Paragraph, Section, TextRun } from '../../src'
+import { Document, List, ListItem, Paragraph, Section, TextRun } from '../../src'
 import { createElementNode, createRoot } from '../../src/core/nodes'
 import { nodeOps, renderer } from '../../src/core/renderer'
 import { snapshot } from '../../src/core/snapshot'
@@ -85,6 +85,20 @@ describe('snapshot', () => {
           ],
         },
       ],
+    })
+  })
+
+  it('casts the bare list flags', () => {
+    const root = mount(
+      defineComponent(
+        () => () =>
+          h(Document, null, () =>
+            h(Section, null, () => h(List, { legal: '', ordered: '' } as never, () => h(ListItem, null, () => 'A'))),
+          ),
+      ),
+    )
+    expect(snapshot(root)).toMatchObject({
+      children: [{ children: [{ type: 'LIST', props: { legal: true, ordered: true } }] }],
     })
   })
 

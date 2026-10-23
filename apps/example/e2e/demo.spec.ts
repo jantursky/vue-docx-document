@@ -46,7 +46,7 @@ test('downloads the invoice under its number, with every item', async ({ page })
 
   const file = await download(page, 'invoice-2026-099.docx', example.getByRole('button', { name: 'Download DOCX' }))
   const { paragraphs } = await readDocx(file)
-  expect(paragraphs).toContain('No. 2026-099 · Bill to Grace Hopper')
+  expect(paragraphs).toContain('No. 2026-099 · Bill to Harbor & Finch Ltd.')
   expect(paragraphs).toEqual(expect.arrayContaining(['Design review', 'Implementation', 'Hosting']))
   expect(paragraphs).toContain('Total €1240.00')
 })

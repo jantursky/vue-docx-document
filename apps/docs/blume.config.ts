@@ -27,7 +27,7 @@ export default defineConfig({
     root: 'docs',
   },
   theme: {
-    accent: { light: '#266df0', dark: '#5b8ff5' },
+    accent: { light: '#2163e0', dark: '#5b8ff5' },
     mode: 'system',
     fonts: {
       display: { name: 'Inter Tight', weights: [600] },

@@ -320,18 +320,31 @@ const paragraph = (node: TreeNode, ctx: Context): ParagraphModel => {
   return { kind: 'paragraph', style, children }
 }
 
-const listLevel = (level: number, props: ListProps, ordered: boolean): ListModel['levels'][number] => ({
-  format: ordered ? (props.format ?? ORDERED_FORMATS[level % ORDERED_FORMATS.length] ?? 'decimal') : 'bullet',
-  text: ordered ? `%${level + 1}.` : (props.bullet ?? BULLETS[level % BULLETS.length] ?? '•'),
-  start: props.start ?? 1,
-  indent: LIST_INDENT * (level + 1),
-  hanging: LIST_HANGING,
-})
+const listLevel = (
+  level: number,
+  props: ListProps,
+  model: Pick<ListModel, 'ordered' | 'legal'>,
+): ListModel['levels'][number] => {
+  const { ordered, legal } = model
+  const shared = { start: props.start ?? 1, indent: LIST_INDENT * (level + 1) }
+  if (legal) {
+    const text = Array.from({ length: level + 1 }, (_, index) => `%${index + 1}.`).join('')
+    // Longer markers such as 1.1.1. get the full step of room.
+    return { ...shared, format: 'decimal', text, hanging: level === 0 ? LIST_HANGING : LIST_INDENT }
+  }
+  return {
+    ...shared,
+    format: ordered ? (props.format ?? ORDERED_FORMATS[level % ORDERED_FORMATS.length] ?? 'decimal') : 'bullet',
+    text: ordered ? `%${level + 1}.` : (props.bullet ?? BULLETS[level % BULLETS.length] ?? '•'),
+    hanging: LIST_HANGING,
+  }
+}
 
 const listItem = (node: TreeNode, ctx: Context, level: number, owner: ListOwner): ParagraphModel[] => {
   const run = cascade(ctx.run, node.props)
   const style = withCompact(paragraphStyle(node.props), ctx)
-  delete style.heading
+  if (style.heading === 'title') fail('<ListItem heading="title"> is not allowed; use a level from 1 to 6.')
+  const { heading: _heading, ...continuation } = style
   const out: ParagraphModel[] = []
   let pending: Child[] = []
   const flush = (): void => {
@@ -340,9 +353,9 @@ const listItem = (node: TreeNode, ctx: Context, level: number, owner: ListOwner)
     if (out.length === 0) {
       out.push({ kind: 'paragraph', style: { ...style, list: { id: owner.model.id, level } }, children })
     } else if (children.length > 0) {
-      // Text after a nested list continues the item: indented like it, without a marker.
-      const indent = { left: owner.model.levels[level]?.indent ?? 0, ...style.indent }
-      out.push({ kind: 'paragraph', style: { ...style, indent }, children })
+      // Text after a nested list continues the item: indented like it, without a marker or heading.
+      const indent = { left: owner.model.levels[level]?.indent ?? 0, ...continuation.indent }
+      out.push({ kind: 'paragraph', style: { ...continuation, indent }, children })
     }
   }
   for (const child of node.children) {
@@ -359,17 +372,19 @@ const list = (node: TreeNode, ctx: Context, level = 0, parentOwner?: ListOwner):
   if (ctx.where === 'footnote') fail("<List> can't be inside <Footnote>; footnotes hold paragraphs.")
   if (level >= MAX_LIST_LEVELS) fail(`Lists nest ${MAX_LIST_LEVELS} levels deep at most.`)
   const props = node.props as ListProps
-  const ordered = Boolean(props.ordered)
   let owner = parentOwner
   if (!owner) {
-    const levels = Array.from({ length: MAX_LIST_LEVELS }, (_, index) => listLevel(index, {}, ordered))
-    const model: ListModel = { id: `list${ctx.state.lists.length + 1}`, ordered, start: props.start ?? 1, levels }
+    const legal = Boolean(props.legal)
+    const kind = { ordered: legal || Boolean(props.ordered), legal }
+    const levels = Array.from({ length: MAX_LIST_LEVELS }, (_, index) => listLevel(index, {}, kind))
+    const model: ListModel = { id: `list${ctx.state.lists.length + 1}`, ...kind, start: props.start ?? 1, levels }
     ctx.state.lists.push(model)
     owner = { model, configured: new Set() }
   }
   if (!owner.configured.has(level)) {
     owner.configured.add(level)
-    owner.model.levels[level] = listLevel(level, props, ordered)
+    const kind = owner.model.legal ? owner.model : { ordered: Boolean(props.ordered), legal: false }
+    owner.model.levels[level] = listLevel(level, props, kind)
   }
   const run = cascade(ctx.run, props)
   return node.children.flatMap((child) => {

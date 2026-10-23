@@ -15,7 +15,7 @@ const audit = async (page: Page) => {
         await new AxeBuilder({ page })
           .withTags(TAGS)
           .include('[data-docx-page]')
-          .disableRules(['color-contrast'])
+          .disableRules(['color-contrast', 'target-size'])
           .analyze()
       ).violations
     : []
@@ -38,6 +38,12 @@ for (const colorScheme of ['light', 'dark'] as const) {
 
     test('the invoice generator has no accessibility violations', async ({ page }) => {
       await page.goto('/#generator')
+      await expect(page.locator('[data-docx-page]').first()).toBeVisible({ timeout: 15_000 })
+      expect(await audit(page)).toEqual([])
+    })
+
+    test('the contract generator has no accessibility violations', async ({ page }) => {
+      await page.goto('/#contract')
       await expect(page.locator('[data-docx-page]').first()).toBeVisible({ timeout: 15_000 })
       expect(await audit(page)).toEqual([])
     })

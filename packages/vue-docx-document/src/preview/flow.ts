@@ -162,7 +162,10 @@ export const buildFlow = (model: DocxModel): Flow => {
         })
         pendingBreak = false
         if (typeof block.style.heading === 'number' && index === 0) {
-          headings.push({ key, level: block.style.heading, text: plainText(block.children) })
+          // A numbered heading, from <ListItem heading>, is listed with its number, as Word does.
+          const marker = markers.get(block)
+          const text = plainText(block.children)
+          headings.push({ key, level: block.style.heading, text: marker === undefined ? text : `${marker} ${text}` })
         }
       })
     })

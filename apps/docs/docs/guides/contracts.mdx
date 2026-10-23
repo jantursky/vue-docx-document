@@ -1,0 +1,143 @@
+---
+title: Contracts and numbered clauses
+description: Build a services agreement with legal numbering, headings in the table of contents, schedules and a signature block.
+---
+
+A contract is mostly numbered text, a few tables and a place to sign. This guide follows the contract generator in the demo app: [try it](https://vue-docx-document.vercel.app/#contract), or read `apps/example/src/contract/ContractDocument.vue`.
+
+## Document setup
+
+A serif font, a longer line height and one inch margins (72pt) set the tone. `headings` restyles the title, the level 1 headings (the parts of the agreement) and the level 2 headings (the clauses):
+
+```vue
+<Document
+  :title="title"
+  font="Georgia"
+  :font-size="10.5"
+  :line-height="1.35"
+  :space-after="6"
+  :headings="{
+    title: { bold: true, size: 26, color: '#111827', spaceAfter: 4 },
+    1: { bold: true, size: 14, color: '#111827', spaceBefore: 18, spaceAfter: 8, keepNext: true },
+    2: { bold: true, size: 11, color: '#111827', spaceBefore: 10, spaceAfter: 4, keepNext: true },
+  }"
+>
+  <Section :margin="{ top: 72, bottom: 72, left: 72, right: 72, header: 32, footer: 32 }">
+```
+
+## Header and footer
+
+The footer shows "Page X of Y". The numbers are fields that Word fills in:
+
+```vue
+<Header>
+  <Paragraph align="right" :size="8" :color="MUTED">{{ title }}</Paragraph>
+</Header>
+<Footer>
+  <Paragraph align="center" :size="8" :color="MUTED">
+    Page <PageNumber /> of <PageNumber type="total" />
+  </Paragraph>
+</Footer>
+```
+
+## Parties with a hanging indent
+
+The parties are numbered by hand, with a tab after the number. `indent` and `hanging` set the same distance, so wrapped lines line up with the text, not the number:
+
+```vue
+<Paragraph v-for="{ number, role, party } in parties" :key="role" :indent="24" :hanging="24" align="justify">
+  ({{ number }})<Tab /><TextRun bold>{{ party.company }}</TextRun>{{ partyText(number, role, party) }}
+</Paragraph>
+```
+
+## Numbered clauses
+
+Use one list with `legal` for the whole agreement. Each top-level item is a clause, and its nested list holds the sub-clauses, numbered `1.1.`, `1.2.` and so on. `:heading="2"` on a clause makes it a real heading that keeps its number, so Word's navigation pane lists it and the table of contents can too:
+
+```vue
+<List legal>
+  <ListItem v-for="clause in clauses" :key="clause.title" :heading="2" :space-after="8">
+    {{ clause.title }}
+    <List ordered>
+      <ListItem v-for="point in clause.points" :key="point.text" align="justify" :space-after="4">
+        {{ point.text }}<Footnote v-if="point.footnote">{{ point.footnote }}</Footnote>
+      </ListItem>
+    </List>
+  </ListItem>
+</List>
+```
+
+Only the outer list needs `legal`. The nested list inherits it.
+
+## Contents and footnotes
+
+`levels` picks which heading levels the table lists. `[1, 2]` lists the parts and the numbered clause titles:
+
+```vue
+<TableOfContents v-if="contract.tableOfContents" title="Contents" :levels="[1, 2]" />
+```
+
+A footnote sits right after the text it explains, inside the sub-clause:
+
+```vue
+{{ point.text }}
+<Footnote v-if="point.footnote">{{ point.footnote }}</Footnote>
+```
+
+Word fills the table of contents when you accept its update prompt on open. See [Footnotes and table of contents](/guides/footnotes-and-toc).
+
+## Schedules
+
+A schedule starts on a new page. `page-break-before` on its heading does that:
+
+```vue
+<Paragraph :heading="1" page-break-before>Schedule A – Services and Fees</Paragraph>
+```
+
+The services are a table with a repeating header row. Only horizontal hairlines are drawn, by naming the sides in `borders`, and rows do not split across pages:
+
+```vue
+<Table
+  :column-widths="[30, 150, 271]"
+  :cell-padding="6"
+  :borders="{ top: HAIRLINE, bottom: HAIRLINE, insideH: HAIRLINE, left: none, right: none, insideV: none }"
+>
+  <TableRow header cant-split background="#f3f4f6" bold>
+    <TableCell>No.</TableCell>
+    <TableCell>Deliverable</TableCell>
+    <TableCell>Includes</TableCell>
+  </TableRow>
+  <TableRow v-for="(item, index) in contract.deliverables" :key="item.id" cant-split>
+    <TableCell>{{ index + 1 }}</TableCell>
+    <TableCell bold>{{ item.title }}</TableCell>
+    <TableCell>
+      <List>
+        <ListItem v-for="line in lines(item.details)" :key="line" :space-after="2">{{ line }}</ListItem>
+      </List>
+    </TableCell>
+  </TableRow>
+</Table>
+```
+
+A cell holds any blocks, so a bulleted list inside a cell is fine.
+
+## Signatures
+
+A signature block is a table with no borders. A signing line is an empty cell with a bottom border, and a row `height` leaves room to sign:
+
+```vue
+<Table :column-widths="[215, 21, 215]" :cell-padding="{ top: 2, bottom: 2, left: 0, right: 0 }" borders="none">
+  <TableRow cant-split :height="44">
+    <TableCell :borders="{ bottom: RULE }"><Paragraph /></TableCell>
+    <TableCell><Paragraph /></TableCell>
+    <TableCell :borders="{ bottom: RULE }"><Paragraph /></TableCell>
+  </TableRow>
+  <TableRow cant-split :size="8" :color="MUTED">
+    <TableCell>Signature</TableCell>
+    <TableCell><Paragraph /></TableCell>
+    <TableCell>Signature</TableCell>
+  </TableRow>
+</Table>
+```
+
+The middle column is a spacer. An empty `<Paragraph />` keeps the cell valid, and a cell with an empty paragraph still has its height.

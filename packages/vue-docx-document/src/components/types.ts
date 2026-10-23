@@ -260,9 +260,20 @@ export interface ListProps extends RunStyle {
   format?: ListFormat
   /** The bullet character of an unordered list. Default `•`, `◦`, `▪` by level. */
   bullet?: string
+  /**
+   * Legal numbering: 1., 1.1., 1.1.1. and so on, decimal at every level. Implies `ordered`.
+   * Set it on the outer list; nested lists follow it, and `format` is ignored then.
+   */
+  legal?: boolean
 }
 
-export type ListItemProps = Omit<ParagraphProps, 'heading'>
+export type ListItemProps = Omit<ParagraphProps, 'heading'> & {
+  /**
+   * Makes the item a numbered heading: it takes the Heading style and keeps its list number,
+   * so it shows in Word's navigation pane and in a `<TableOfContents>`.
+   */
+  heading?: Exclude<HeadingLevel, 'title'>
+}
 
 export interface TableOfContentsProps {
   title?: string

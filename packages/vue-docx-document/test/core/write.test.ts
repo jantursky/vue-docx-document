@@ -287,6 +287,24 @@ describe('lists', () => {
     expect(numIds[1]![0]).toBe('1')
     expect(numIds[2]![1]).not.toBe(numIds[0]![1])
   })
+
+  it('writes legal numbering and numbered headings', async () => {
+    const parts = await write(() =>
+      h(List, { legal: true }, () =>
+        h(ListItem, { heading: 1 }, () => ['Definitions', h(List, null, () => h(ListItem, null, () => 'Terms'))]),
+      ),
+    )
+    const numbering = parts['word/numbering.xml']!
+    // docx adds a bullet definition of its own first.
+    const levelTexts = [...numbering.matchAll(/<w:lvlText w:val="(%[^"]*)"\/>/g)].map(([, text]) => text)
+    expect(levelTexts.slice(0, 3)).toEqual(['%1.', '%1.%2.', '%1.%2.%3.'])
+    expect(numbering).toContain('<w:isLgl/>')
+    expect(numbering.match(/<w:numFmt w:val="decimal"\/>/g)).toHaveLength(9)
+    const xml = parts['word/document.xml']!
+    expect(xml).toMatch(
+      /<w:pPr><w:pStyle w:val="Heading1"\/><w:numPr><w:ilvl w:val="0"\/><w:numId w:val="\d+"\/><\/w:numPr>/,
+    )
+  })
 })
 
 describe('tables', () => {
@@ -336,6 +354,15 @@ describe('tables', () => {
     expect(xml).toContain('<w:left w:val="single" w:color="FF0000" w:sz="4" w:space="0"/>')
     // An empty cell still gets a paragraph.
     expect(xml).toMatch(/<w:tc><w:tcPr>(?:(?!<\/w:tc>).)*<w:p\/?>/)
+  })
+
+  it('cascades run props set on a row into its runs', async () => {
+    const xml = await documentXml(() =>
+      h(Table, null, () => h(TableRow, { size: 9, italic: true }, () => h(TableCell, null, () => 'Caption'))),
+    )
+    expect(xml).toMatch(
+      /<w:r><w:rPr><w:i\/><w:iCs\/><w:sz w:val="18"\/><w:szCs w:val="18"\/><\/w:rPr><w:t xml:space="preserve">Caption<\/w:t>/,
+    )
   })
 
   it('writes a borderless percent table', async () => {

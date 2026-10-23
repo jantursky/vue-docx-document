@@ -45,6 +45,26 @@ By level, bullets cycle through `•`, `◦` and `▪`. Ordered lists use decima
 
 `format` is `decimal`, `lowerLetter`, `upperLetter`, `lowerRoman` or `upperRoman`. `bullet` sets the character of an unordered list. In a nested list they set that level only.
 
+## Legal numbering
+
+Add `legal` to an ordered list for the numbering of contracts: `1.`, `1.1.`, `1.1.1.` at every level. Nested lists inherit it, so only the outer list needs the flag.
+
+```vue
+<List ordered legal>
+  <ListItem>
+    Services
+    <List ordered>
+      <ListItem>The Provider delivers the services in Schedule A.</ListItem>
+      <ListItem>Changes are agreed in writing.</ListItem>
+    </List>
+  </ListItem>
+</List>
+```
+
+## Clause titles as headings
+
+`<ListItem :heading="2">` makes the item a real heading that keeps its number. Word's navigation pane and a `<TableOfContents>` then list it. See [Contracts and numbered clauses](/guides/contracts).
+
 ## Restarting
 
 Each top-level `<List>` gets its own numbering instance, so two ordered lists in a row both start at 1. To continue a numbering, use one list with several items, or set `start`.
@@ -59,4 +79,4 @@ Each top-level `<List>` gets its own numbering instance, so two ordered lists in
 </List>
 ```
 
-`<ListItem>` accepts everything a `<Paragraph>` does except `heading`.
+`<ListItem>` accepts everything a `<Paragraph>` does, including `heading`.

@@ -360,6 +360,7 @@ const builder = (d: Engine) => {
               format: level.format,
               text: level.text,
               start: level.start,
+              isLegalNumberingStyle: list.legal,
               alignment: 'left' as const,
               style: { paragraph: { indent: { left: twips(level.indent), hanging: twips(level.hanging) } } },
             })),

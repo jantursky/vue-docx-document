@@ -9,7 +9,7 @@ import InvoiceDocument from './InvoiceDocument.vue'
 let nextId = 3
 const invoice = reactive({
   number: '2026-042',
-  customer: 'Grace Hopper',
+  customer: 'Harbor & Finch Ltd.',
   paid: false,
   items: [
     { id: 1, name: 'Design review', quantity: 2, price: 120 },

@@ -198,13 +198,8 @@ pre {
 }
 
 .brand-mark {
-  width: 22px;
-  height: 22px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.5;
-  stroke-linejoin: round;
-  stroke-linecap: round;
+  width: 24px;
+  height: 24px;
 }
 
 .version {
@@ -897,17 +892,19 @@ input[type='color'] {
 .gen-items {
   display: grid;
   gap: var(--space-2);
+  /* The editor lays itself out by its own width, not the screen's. */
+  container-type: inline-size;
 }
 
 .gen-item {
   display: grid;
-  grid-template-columns: minmax(120px, 1fr) 56px 48px 72px 56px 56px 84px auto;
+  grid-template-columns: minmax(220px, 1fr) 64px 56px 88px 64px 72px 96px 88px;
   align-items: center;
   gap: var(--space-2);
 }
 
 .gen-item-head {
-  color: var(--color-muted);
+  color: var(--color-carbon);
   font-size: 12px;
 }
 
@@ -917,6 +914,13 @@ input[type='color'] {
   padding: 0 var(--space-2);
 }
 
+.gen-cell-label {
+  display: none;
+  margin-bottom: 2px;
+  color: var(--color-carbon);
+  font-size: 12px;
+}
+
 .gen-amount {
   text-align: right;
   font-variant-numeric: tabular-nums;
@@ -924,6 +928,7 @@ input[type='color'] {
 
 .gen-actions {
   display: flex;
+  justify-content: flex-end;
   gap: 2px;
 }
 
@@ -943,32 +948,76 @@ input[type='color'] {
   cursor: not-allowed;
 }
 
-@media (max-width: 1200px) {
-  .generator {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
+/*
+ * Narrow editors stack each item: the description with its remove button, the five numbers
+ * with captions, then reorder on the left and the line amount on the right.
+ */
+@container (max-width: 820px) {
   .gen-item-head {
     display: none;
   }
 
   .gen-item {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    padding: var(--space-3);
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 6px var(--space-2);
+    padding: var(--space-2) var(--space-3) var(--space-3);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-control);
   }
 
+  .gen-actions {
+    display: contents;
+  }
+
   .gen-description {
-    grid-column: 1 / -1;
+    order: 1;
+    grid-column: 1 / -2;
+  }
+
+  .gen-remove {
+    order: 2;
+    grid-column: -2 / -1;
+    justify-self: end;
+  }
+
+  .gen-item > [role='cell']:not(.gen-description, .gen-amount, .gen-actions) {
+    order: 3;
+  }
+
+  .gen-up {
+    order: 4;
+    grid-column: 1;
+    justify-self: start;
+  }
+
+  .gen-down {
+    order: 5;
+    grid-column: 2;
+    justify-self: start;
   }
 
   .gen-amount {
-    text-align: left;
+    order: 6;
+    grid-column: 3 / -1;
+    text-align: right;
+    font-weight: 600;
   }
 
-  .gen-actions {
-    justify-content: flex-end;
+  .gen-cell-label {
+    display: block;
+  }
+}
+
+/* Too narrow for five across: three, then two. */
+@container (max-width: 520px) {
+  .gen-item {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1200px) {
+  .generator {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -1140,4 +1189,21 @@ input[type='color'] {
   .footer-grid {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+.gen-deliverables {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.gen-deliverable {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+}
+
+.gen-deliverable .gen-actions {
+  justify-content: flex-start;
 }

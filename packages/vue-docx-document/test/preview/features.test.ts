@@ -133,6 +133,30 @@ describe('blocks', () => {
     ])
   })
 
+  it('draws legal markers and lists numbered headings in the table of contents', async () => {
+    const wrapper = await draw(() => [
+      h(TableOfContents),
+      h(List, { legal: true }, () => [
+        h(ListItem, { heading: 1 }, () => 'Scope'),
+        h(ListItem, { heading: 1 }, () => [
+          'Definitions',
+          h(List, null, () => [h(ListItem, { heading: 2 }, () => 'Terms'), h(ListItem, null, () => 'Plain')]),
+        ]),
+      ]),
+    ])
+    expect(wrapper.findAll('[data-docx-list-marker]').map((marker) => marker.text())).toEqual([
+      '1.',
+      '2.',
+      '2.1.',
+      '2.2.',
+    ])
+    expect(wrapper.findAll('[data-docx-toc-entry]').map((entry) => entry.text())).toEqual([
+      '1. Scope1',
+      '2. Definitions1',
+      '2.1. Terms1',
+    ])
+  })
+
   it('draws tables with spans, padding, borders and widths', async () => {
     const wrapper = await draw(() =>
       h(Table, { columnWidths: [100, 100], align: 'center', borders: { insideV: { color: 'red' } } }, () => [

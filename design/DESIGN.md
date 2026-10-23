@@ -8,6 +8,20 @@ else. No ad-hoc colors.
 The generated documents (the invoice and the examples) are not bound by this system. They
 pick their own colors, because a Word file is the user's, not ours.
 
+## Logo
+
+The mark is a "D" for document whose top-left corner is folded like a page, with three
+lines of text inside. It uses Vue's own colors, so it reads as part of the Vue family:
+Vue green `#42b883` for the body, Vue navy `#35495e` for the fold (`#8fd6b6` on dark
+surfaces, where navy disappears), and white text lines. Tokens: `--logo-green`,
+`--logo-fold`.
+
+The logo is the only place the green appears. The UI accent stays cobalt.
+
+Files: `apps/docs/public/icon.svg` and `icon-dark.svg` (favicons), `apps/docs/public/logo.svg`
+(inlined by Blume, follows its theme through `--logo-fold`), `apps/example/public/favicon.svg`
+(switches with `prefers-color-scheme`), and the header mark in `apps/example/src/App.vue`.
+
 ## Color
 
 | Token                  | Light     | Dark                     | Use                                                  |

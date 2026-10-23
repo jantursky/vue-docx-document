@@ -3,14 +3,15 @@
   --blume-background: #ffffff;
   --blume-foreground: #1c1d1f;
   --blume-muted: #f4f5f6;
-  --blume-muted-foreground: #6f7988;
+  --blume-muted-foreground: #5f6876;
   --blume-border: #e4e7ec;
-  --blume-accent: #266df0;
+  --blume-accent: #2163e0;
   --blume-accent-foreground: #ffffff;
   --blume-action: #232529;
   --blume-action-foreground: #ffffff;
   --blume-code-background: #f4f5f6;
   --blume-radius: 10px;
+  --logo-fold: #35495e;
 }
 
 :root[data-theme='dark'] {
@@ -24,6 +25,7 @@
   --blume-action: #f4f5f6;
   --blume-action-foreground: #101113;
   --blume-code-background: #141518;
+  --logo-fold: #8fd6b6;
 }
 
 h1,

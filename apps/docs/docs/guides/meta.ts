@@ -11,6 +11,7 @@ export default defineMeta({
     'sections-and-pages',
     'links-and-bookmarks',
     'footnotes-and-toc',
+    'contracts',
     'styles',
     'preview',
     'server',

@@ -147,8 +147,9 @@ These props are accepted by `Paragraph`, `TextRun`, `Link`, `PageNumber`, `ListI
 Where: a block container, or inside a `ListItem` for nesting. Children: `ListItem`. Plus all run style props.
 
 | prop      | type                                                                          | default                                               |
-| --------- | ----------------------------------------------------------------------------- | ----------------------------------------------------- |
+| --------- | ----------------------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------- |
 | `ordered` | `boolean`                                                                     | `false`                                               |
+| `legal`   | `boolean`                                                                     | `false`                                               | Legal numbering `1.`, `1.1.`, `1.1.1.` at every level. Nested lists inherit it. |
 | `start`   | `number`                                                                      | `1`                                                   |
 | `format`  | `'decimal' \| 'lowerLetter' \| 'upperLetter' \| 'lowerRoman' \| 'upperRoman'` | decimal, then lower letter, then lower roman by level |
 | `bullet`  | `string`                                                                      | `•`, `◦`, `▪` by level                                |
@@ -157,7 +158,7 @@ A nested `List` sets `format` and `bullet` for its own level only.
 
 ### ListItem
 
-Where: `List`. Children: text, inline elements and a nested `List`. Props: everything `Paragraph` accepts except `heading`.
+Where: `List`. Children: text, inline elements and a nested `List`. Props: everything `Paragraph` accepts. `heading` (`'title'` or `1` to `6`) makes the item a heading that keeps its list number, so the navigation pane and `TableOfContents` list it.
 
 ## Tables
 

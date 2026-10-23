@@ -12,8 +12,14 @@ export const useFitScale = (element: Ref<HTMLElement | null>, pageWidth = A4_WID
     element,
     (target, _previous, onCleanup) => {
       if (!target) return
+      // Changing the scale resizes the element, so the update waits for the next frame
+      // instead of triggering another observation in the same one.
       const observer = new ResizeObserver(([entry]) => {
-        if (entry) scale.value = Math.min(1, Math.floor((Math.max(entry.contentRect.width, 1) / pageWidth) * 100) / 100)
+        if (!entry) return
+        const next = Math.min(1, Math.floor((Math.max(entry.contentRect.width, 1) / pageWidth) * 100) / 100)
+        requestAnimationFrame(() => {
+          scale.value = next
+        })
       })
       observer.observe(target)
       onCleanup(() => observer.disconnect())

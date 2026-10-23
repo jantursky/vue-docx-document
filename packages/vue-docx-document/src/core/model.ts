@@ -188,6 +188,8 @@ export interface SectionModel {
 export interface ListModel {
   id: string
   ordered: boolean
+  /** Legal numbering: every level decimal, each number showing the ones above it, as in 1.2.1. */
+  legal: boolean
   start: number
   /** Per level, 0–8. */
   levels: { format: ListFormat | 'bullet'; text: string; start: number; indent: number; hanging: number }[]

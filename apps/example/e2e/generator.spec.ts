@@ -37,11 +37,11 @@ test('opens from its tab and previews the sample invoice as a Word document', as
   await expect(page.getByRole('tab', { name: 'Invoice generator' })).toHaveAttribute('aria-selected', 'true')
   await expect(page.locator('[data-format="docx"]')).toHaveAttribute('aria-pressed', 'true')
   await expect(pages(page).first()).toContainText('INVOICE')
-  await expect(pages(page).first()).toContainText('Northwind Traders GmbH')
+  await expect(pages(page).first()).toContainText('Harbor & Finch Ltd.')
 
   await expect(total(page, 'subtotal')).toHaveText('€7,399.80')
-  await expect(total(page, 'vat')).toHaveText('€1,687.59')
-  await expect(total(page, 'total')).toHaveText('€9,087.39')
+  await expect(total(page, 'vat')).toHaveText('€1,690.78')
+  await expect(total(page, 'total')).toHaveText('€9,090.58')
 })
 
 test('switches tabs with the keyboard and the URL', async ({ page }) => {
@@ -60,11 +60,11 @@ test('recomputes totals per VAT rate as items change', async ({ page }) => {
   await row.getByLabel('Description').fill('Hosting')
   await row.getByLabel('Quantity').fill('2')
   await row.getByLabel('Unit price').fill('100')
-  await row.getByLabel('VAT rate').selectOption('19')
+  await row.getByLabel('VAT rate').selectOption('13.5')
 
   await expect(total(page, 'subtotal')).toHaveText('€7,599.80')
-  await expect(total(page, 'vat')).toHaveText('€1,725.59')
-  await expect(total(page, 'total')).toHaveText('€9,325.39')
+  await expect(total(page, 'vat')).toHaveText('€1,717.78')
+  await expect(total(page, 'total')).toHaveText('€9,317.58')
   await expect(pages(page).first()).toContainText('Hosting')
 
   await page.getByLabel('Supplier is a VAT payer').uncheck()
@@ -78,7 +78,7 @@ test('downloads the Word file named after the invoice number, with its items and
   const { paragraphs } = await readDocx(file)
   expect(paragraphs).toContain('No. 2026-777')
   expect(paragraphs).toEqual(
-    expect.arrayContaining(['Discovery workshop', 'Vue 3 front-end development', '€9,087.39', 'Issued by: Ján Novák']),
+    expect.arrayContaining(['Discovery workshop', 'Front-end development', '€9,090.58', 'Issued by: Maeve Brennan']),
   )
 })
 
@@ -165,7 +165,7 @@ test('exports and imports the invoice as JSON', async ({ page }) => {
     mimeType: 'application/json',
     buffer: Buffer.from('{"hello":1}'),
   })
-  await expect(page.getByRole('alert')).toHaveText("nope.json isn't an invoice exported from this generator.")
+  await expect(page.getByRole('alert')).toHaveText("nope.json isn't a file exported from this generator.")
 })
 
 test('paginates long invoices in both formats', async ({ page }) => {
@@ -179,10 +179,21 @@ test('paginates long invoices in both formats', async ({ page }) => {
     buffer: Buffer.from(JSON.stringify({ ...invoice, items: [...invoice.items, ...extra] })),
   })
   await expect(page.locator('[data-item]')).toHaveCount(34)
-  await expect.poll(() => pages(page).count()).toBe(2)
+  // The exact count depends on fonts and spacing; what must hold is that the item table
+  // repeats its header on every page, the footer counts the pages, and the totals come last.
+  await expect(pages(page).last()).toContainText('Item 29', { timeout: 15_000 })
+  const count = await pages(page).count()
+  expect(count).toBeGreaterThan(1)
+  for (let index = 0; index < count; index++) {
+    const sheet = pages(page).nth(index)
+    await expect(sheet).toContainText('Description')
+    await expect(sheet).toContainText(`Page ${index + 1} of ${count}`)
+  }
+  await expect(pages(page).last()).toContainText('Item 29')
+  await expect(pages(page).last()).toContainText('Amount due')
 
   await showPdf(page)
-  await expect(page.locator('[data-status]')).toHaveText('Ready · 2 pages')
+  await expect(page.locator('[data-status]')).toHaveText(/^Ready · [2-9] pages$/, { timeout: 30_000 })
 })
 
 test('refuses invoices that would break the renderer and keeps the current one', async ({ page }) => {
@@ -214,10 +225,10 @@ test('refuses invoices that would break the renderer and keeps the current one',
       mimeType: 'application/json',
       buffer: Buffer.from(JSON.stringify(invoice)),
     })
-    await expect(page.getByRole('alert'), name).toHaveText("bad.json isn't an invoice exported from this generator.")
+    await expect(page.getByRole('alert'), name).toHaveText("bad.json isn't a file exported from this generator.")
     await expect(page.locator('#gen-number'), name).toHaveValue(number)
     await expect(page.locator('[data-item]'), name).toHaveCount(4)
-    await expect(pages(page).first(), name).toContainText('Northwind Traders GmbH')
+    await expect(pages(page).first(), name).toContainText('Harbor & Finch Ltd.')
   }
 
   // Missing optional fields come from a blank invoice instead of the draft that was open.
@@ -239,7 +250,7 @@ test('ignores a broken saved draft', async ({ page }) => {
     ),
   )
   await page.reload()
-  await expect(pages(page).first()).toContainText('Northwind Traders GmbH')
+  await expect(pages(page).first()).toContainText('Harbor & Finch Ltd.')
   await expect(page.locator('[data-item]')).toHaveCount(4)
 })
 
@@ -248,6 +259,6 @@ test('draws no QR code without a supplier name', async ({ page }) => {
   await page.locator('#seller-name').fill('')
   await expect(page.getByText(/The QR code needs EUR, a supplier name/)).toBeVisible()
   await expect(page.locator('[data-docx-page] img')).toHaveCount(0)
-  await page.locator('#seller-name').fill('Apptiary s.r.o.')
+  await page.locator('#seller-name').fill('Brightline Studio Ltd.')
   await expect(page.locator('[data-docx-page] img')).toHaveCount(1)
 })
