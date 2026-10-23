@@ -26,37 +26,42 @@ for (const width of WIDTHS) {
       test(`${path} keeps every control and page inside its card`, async ({ page }) => {
         await page.goto(path)
         await expect(page.locator('[data-docx-page]').first()).toBeVisible({ timeout: 15_000 })
-        // Let the preview settle on its fitted scale.
-        await page.waitForTimeout(300)
+        // The preview settles on its fitted scale a frame or two later, which is slow on CI WebKit,
+        // so the check polls until it passes instead of sleeping a fixed time.
+        await expect
+          .poll(
+            () =>
+              page.evaluate(() => {
+                const found: string[] = []
+                const describe = (el: Element) => `${el.tagName.toLowerCase()}.${el.className || ''}`.slice(0, 80)
 
-        const offenders = await page.evaluate(() => {
-          const found: string[] = []
-          const describe = (el: Element) => `${el.tagName.toLowerCase()}.${el.className || ''}`.slice(0, 80)
+                for (const card of document.querySelectorAll('.gen-section, .gen-preview')) {
+                  const box = card.getBoundingClientRect()
+                  for (const el of card.querySelectorAll('*')) {
+                    if (el.closest('.viewer, .sr-only, legend, [data-pdf-viewer]') || el.matches('.sr-only')) continue
+                    const rect = el.getBoundingClientRect()
+                    if (rect.width === 0 && rect.height === 0) continue
+                    if (rect.right > box.right + 1 || rect.left < box.left - 1) found.push(`outside: ${describe(el)}`)
+                    if (el.scrollWidth > el.clientWidth + 1 && !['INPUT', 'SELECT', 'TEXTAREA'].includes(el.tagName)) {
+                      found.push(`clipped: ${describe(el)}`)
+                    }
+                  }
+                }
 
-          for (const card of document.querySelectorAll('.gen-section, .gen-preview')) {
-            const box = card.getBoundingClientRect()
-            for (const el of card.querySelectorAll('*')) {
-              if (el.closest('.viewer, .sr-only, legend, [data-pdf-viewer]') || el.matches('.sr-only')) continue
-              const rect = el.getBoundingClientRect()
-              if (rect.width === 0 && rect.height === 0) continue
-              if (rect.right > box.right + 1 || rect.left < box.left - 1) found.push(`outside: ${describe(el)}`)
-              if (el.scrollWidth > el.clientWidth + 1 && !['INPUT', 'SELECT', 'TEXTAREA'].includes(el.tagName)) {
-                found.push(`clipped: ${describe(el)}`)
-              }
-            }
-          }
-
-          for (const viewer of document.querySelectorAll('.viewer')) {
-            const box = viewer.getBoundingClientRect()
-            if (viewer.scrollWidth > viewer.clientWidth + 1) found.push('viewer scrolls sideways')
-            for (const sheet of viewer.querySelectorAll('[data-docx-page]')) {
-              const rect = sheet.getBoundingClientRect()
-              if (rect.right > box.right + 1 || rect.left < box.left - 1) found.push('a page is cut off by the viewer')
-            }
-          }
-          return found
-        })
-        expect(offenders).toEqual([])
+                for (const viewer of document.querySelectorAll('.viewer')) {
+                  const box = viewer.getBoundingClientRect()
+                  if (viewer.scrollWidth > viewer.clientWidth + 1) found.push('viewer scrolls sideways')
+                  for (const sheet of viewer.querySelectorAll('[data-docx-page]')) {
+                    const rect = sheet.getBoundingClientRect()
+                    if (rect.right > box.right + 1 || rect.left < box.left - 1)
+                      found.push('a page is cut off by the viewer')
+                  }
+                }
+                return found
+              }),
+            { timeout: 10_000 },
+          )
+          .toEqual([])
       })
     }
   })
