@@ -1,4 +1,6 @@
-<p align="center"><img src="apps/docs/public/icon.svg" alt="" width="72" height="72" /></p>
+<p align="center">
+  <img src=".github/assets/banner.svg" alt="Vue DOCX Document: docx files from vue components" width="420">
+</p>
 
 # vue-docx-document
 
