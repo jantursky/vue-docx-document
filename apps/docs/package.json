@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@astrojs/vue": "^7.1.1",
-    "blume": "^2.2.4",
+    "blume": "^2.2.6",
     "vue": "^3.5.0",
     "vue-docx-document": "workspace:*",
     "vue-pdf-document": "^1.1.0"
