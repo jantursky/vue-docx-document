@@ -18,7 +18,7 @@
     "roboto-fontface": "^0.10.0",
     "vue": "^3.5.0",
     "vue-docx-document": "workspace:*",
-    "vue-pdf-document": "^1.1.0"
+    "vue-pdf-document": "^1.2.1"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",
