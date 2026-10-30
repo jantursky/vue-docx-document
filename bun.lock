@@ -24,7 +24,7 @@
         "blume": "^2.2.4",
         "vue": "^3.5.0",
         "vue-docx-document": "workspace:*",
-        "vue-pdf-document": "^1.1.0",
+        "vue-pdf-document": "^1.2.1",
       },
     },
     "apps/example": {
@@ -38,7 +38,7 @@
         "roboto-fontface": "^0.10.0",
         "vue": "^3.5.0",
         "vue-docx-document": "workspace:*",
-        "vue-pdf-document": "^1.1.0",
+        "vue-pdf-document": "^1.2.1",
       },
       "devDependencies": {
         "@axe-core/playwright": "^4.14.0",
@@ -54,7 +54,7 @@
     },
     "packages/vue-docx-document": {
       "name": "vue-docx-document",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "dependencies": {
         "docx": "^9.14.0",
       },
@@ -2330,7 +2330,7 @@
 
     "vue-eslint-parser": ["vue-eslint-parser@10.4.1", "", { "dependencies": { "debug": "^4.4.0", "eslint-scope": "^8.2.0 || ^9.0.0", "eslint-visitor-keys": "^4.2.0 || ^5.0.0", "espree": "^10.3.0 || ^11.0.0", "esquery": "^1.6.0", "semver": "^7.6.3" }, "peerDependencies": { "eslint": "^8.57.0 || ^9.0.0 || ^10.0.0" } }, "sha512-Gk6gRDj0n/fkRa3C3l0bBheoBckUq/Rs0F/TvMWIS6nzzx67amAViMe9CkNgsP2tXyQONvGiHQESHwFtZ3aYDA=="],
 
-    "vue-pdf-document": ["vue-pdf-document@1.2.0", "", { "dependencies": { "@react-pdf/fns": "3.1.3", "@react-pdf/font": "^4.1.2", "@react-pdf/layout": "^5.2.0", "@react-pdf/primitives": "^4.4.0", "@react-pdf/render": "^4.7.0", "@react-pdf/types": "^2.14.0", "pdfkit": "0.20.1" }, "peerDependencies": { "vue": "^3.5.0" } }, "sha512-H4FeF5B584OT8/mE+HRhH6yG+ziCtWX3zz20VeanFdMnAU1c44K6l+V6tB7r2a3DXqa7CZTZBYJdUvuOM/tOIA=="],
+    "vue-pdf-document": ["vue-pdf-document@1.2.1", "", { "dependencies": { "@react-pdf/fns": "3.1.3", "@react-pdf/font": "^4.1.2", "@react-pdf/layout": "^5.2.0", "@react-pdf/primitives": "^4.4.0", "@react-pdf/render": "^4.7.0", "@react-pdf/types": "^2.14.0", "pdfkit": "0.20.1" }, "peerDependencies": { "vue": "^3.5.0" } }, "sha512-dGdJYIqsMUM0tiZEDMeJeJS/iBOeVUsED4EEoqt99zNk+chgto9NTIi3XbAxvqNZ71l9ZyW7vV/MZbYVjkKT+w=="],
 
     "vue-tsc": ["vue-tsc@3.3.13", "", { "dependencies": { "@volar/typescript": "2.4.28", "@vue/language-core": "3.3.13" }, "peerDependencies": { "typescript": ">=5.0.0" }, "bin": { "vue-tsc": "bin/vue-tsc.js" } }, "sha512-jE4/bXdOMSHVxEGgQCqNllJy+9N3Gx6tfSAsg0yhFK/MAN6eXqISihupnDEKSCt12VVnjN2gI3AqLYcqoh5x/A=="],
 
