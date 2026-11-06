@@ -64,7 +64,7 @@
     "size": "size-limit"
   },
   "dependencies": {
-    "docx": "^9.14.0"
+    "docx": "^9.15.1"
   },
   "peerDependencies": {
     "vue": "^3.5.0"
