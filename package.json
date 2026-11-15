@@ -18,7 +18,8 @@
     "build:docs": "bun run build:lib && bun run --filter docs build",
     "build:lib": "bun run --filter vue-docx-document build",
     "lint:package": "bun run --filter vue-docx-document lint:package",
-    "test": "bun run --filter vue-docx-document test",
+    "test": "bun run --filter vue-docx-document test && bun run test:scripts",
+    "test:scripts": "node --test \"scripts/*.test.js\"",
     "test:coverage": "bun run --filter vue-docx-document test:coverage",
     "test:browser": "bun run --filter vue-docx-document test:browser",
     "test:e2e": "bun run build && bun run --filter example test:e2e",
@@ -28,7 +29,8 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write . --ignore-path .gitignore --ignore-path .prettierignore --ignore-path .git/info/exclude",
     "format:check": "prettier --check . --ignore-path .gitignore --ignore-path .prettierignore --ignore-path .git/info/exclude",
-    "check": "node scripts/samples.js --check && bun run format:check && bun run lint && bun run typecheck && bun run test:coverage",
+    "check": "node scripts/samples.js --check && node scripts/docs-drift.js && bun run test:scripts && bun run format:check && bun run lint && bun run typecheck && bun run test:coverage",
+    "check:docs": "node scripts/docs-drift.js",
     "sync:samples": "node scripts/samples.js"
   },
   "devDependencies": {

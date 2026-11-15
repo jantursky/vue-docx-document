@@ -31,7 +31,7 @@ bun run dev                                       # demo app, reading the librar
 ## Checks
 
 ```sh
-bun run check          # samples in sync, format, lint, typecheck, unit tests with coverage
+bun run check          # samples in sync, reference docs, format, lint, typecheck, unit tests with coverage
 bun run test:browser   # rendering in Chromium, Firefox and WebKit
 bun run test:e2e       # builds the demo and drives it with Playwright
 bun run build          # fails over the size budgets in packages/vue-docx-document/.size-limit.json
@@ -44,6 +44,8 @@ CI runs all of them on every pull request.
 
 - TypeScript strict, `<script setup>` in components, Prettier formatting (`bun run format`).
 - Every behavior change comes with a test. Unit tests build real documents and read them back, so a change to the output shows up as a failing assertion.
+- New components, props, functions and exported types need an entry in `apps/docs/docs/reference`; `bun run check:docs` fails when one is missing.
+- A change under `packages/vue-docx-document/src` needs an entry under `## [Unreleased]` in the package changelog. CI skips this for pull requests labeled `no-changelog`.
 - Code samples in `packages/vue-docx-document/README.md` and `apps/docs/docs/getting-started.mdx` are type-checked. After editing them, run `bun run sync:samples`.
 - Add a line under `## [Unreleased]` in `packages/vue-docx-document/CHANGELOG.md` for anything users will notice.
 - Breaking changes need a new major version and an entry under **Changed**.

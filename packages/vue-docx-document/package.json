@@ -67,7 +67,7 @@
     "docx": "^9.15.3"
   },
   "peerDependencies": {
-    "vue": "^3.5.45"
+    "vue": "^3.5.0"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",

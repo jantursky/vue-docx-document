@@ -83,11 +83,12 @@ bun run dev            # demo app with hot reload, reading the library's source
 bun run dev:docs       # docs site with hot reload
 bun run build          # library with size-limit budgets, then the demo app
 bun run build:docs     # library, then the docs site
-bun run check          # samples, format check, lint, typecheck, tests with coverage
+bun run check          # samples, reference docs, script tests, format check, lint, typecheck, tests with coverage
 bun run test:browser   # export and preview in real Chromium, Firefox and WebKit
 bun run test:e2e       # build the demo and drive it with Playwright in all three engines
 bun run lint:package   # publint and type resolution (after build)
 bun run test:pack      # install the packed tarball into an empty project and render from it (after build)
+bun run check:docs     # fail if the reference pages miss a component, prop, function or type
 bun run sync:samples   # copy the README and docs code samples into the demo, where they're type-checked
 bun run format         # format everything with Prettier
 bun run lint:fix       # fix what ESLint can fix
@@ -103,7 +104,7 @@ Tests come in seven layers:
 - **End-to-end** (`apps/example/e2e`, Playwright): the built demo, with live previews, downloads checked by unzipping them, and the invoice generator's totals, language, QR code, logo, saved draft, JSON import and PDF export.
 - **Accessibility** (`apps/example/e2e/a11y.spec.ts`, axe-core): the demo against WCAG 2.2 A and AA, in the light and dark themes.
 - **Vue versions** (CI): the library's typecheck and unit tests against Vue 3.5.0, the oldest version its peer range allows, and the newest one on npm.
-- **Package** (`scripts/pack-test.js`): the tarball installed into an empty project, imported and required from plain Node, rendering a real file.
+- **Package** (`scripts/pack-test.js`): the tarball installed into an empty project, imported and required from plain Node, rendering a real file. CI runs it on Node 20, 22 and 24, because the package supports Node 20.19 and newer while the build tooling and Vitest need 22.
 
 The code samples in the package README and the getting-started page are copied into `apps/example/src/typecheck` by `bun run sync:samples` and compiled with the demo; `bun run check` fails if a copy is stale.
 

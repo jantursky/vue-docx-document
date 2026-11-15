@@ -15,6 +15,7 @@ export default defineMeta({
     'styles',
     'preview',
     'server',
+    'supported-environments',
     'one-template-two-formats',
     'migrating-from-docx',
     'troubleshooting',

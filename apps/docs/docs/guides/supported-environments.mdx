@@ -1,0 +1,30 @@
+---
+title: Supported environments
+description: The Node versions, browsers and runtimes the package is tested on.
+---
+
+Everything on this page is tested in CI. A version that isn't listed may work, but nothing checks it.
+
+## Vue
+
+`vue-docx-document` needs Vue `^3.5.0`. CI runs the type check and the unit tests against Vue 3.5.0, the oldest version in that range, and against the newest release on npm.
+
+## Node
+
+The package needs Node 20.19 or newer. CI runs on three versions:
+
+| Node | What runs                                                                   |
+| ---- | --------------------------------------------------------------------------- |
+| 20   | The packed tarball is installed into an empty project and renders a file.   |
+| 22   | The full suite: unit, browser and end-to-end tests, the build and the docs. |
+| 24   | The unit tests and the packed tarball.                                      |
+
+The library's build tooling and the unit test runner need Node 22 or newer, so the package is built on 22 and Node 20 is covered through the tarball test only. That test imports and requires the package from plain Node and renders a document, which exercises the same code a consumer runs.
+
+## Browsers
+
+`DocxPreview` and `downloadDocx()` need a DOM. The rendering tests run in the current Chromium, Firefox and WebKit, and the demo's end-to-end tests run in the same three engines.
+
+## Workers and edge runtimes
+
+`renderToBuffer()`, `renderToBlob()` and `renderToBase64()` use no DOM, so they run in workers and edge runtimes. These runtimes aren't in the test matrix; see [Server rendering](/guides/server) for what to expect. `DocxPreview` and `downloadDocx()` don't run there.
