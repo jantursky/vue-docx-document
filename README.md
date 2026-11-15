@@ -104,7 +104,7 @@ Tests come in seven layers:
 - **End-to-end** (`apps/example/e2e`, Playwright): the built demo, with live previews, downloads checked by unzipping them, and the invoice generator's totals, language, QR code, logo, saved draft, JSON import and PDF export.
 - **Accessibility** (`apps/example/e2e/a11y.spec.ts`, axe-core): the demo against WCAG 2.2 A and AA, in the light and dark themes.
 - **Vue versions** (CI): the library's typecheck and unit tests against Vue 3.5.0, the oldest version its peer range allows, and the newest one on npm.
-- **Package** (`scripts/pack-test.js`): the tarball installed into an empty project, imported and required from plain Node, rendering a real file. CI runs it on Node 20, 22 and 24, because the package supports Node 20.19 and newer while Vitest needs 22.12.
+- **Package** (`scripts/pack-test.js`): the tarball installed into an empty project, imported and required from plain Node, rendering a real file. CI runs it on Node 20, 22 and 24, because the package supports Node 20.19 and newer while the build tooling and Vitest need 22.
 
 The code samples in the package README and the getting-started page are copied into `apps/example/src/typecheck` by `bun run sync:samples` and compiled with the demo; `bun run check` fails if a copy is stale.
 

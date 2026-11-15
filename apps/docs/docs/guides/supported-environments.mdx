@@ -19,7 +19,7 @@ The package needs Node 20.19 or newer. CI runs on three versions:
 | 22   | The full suite: unit, browser and end-to-end tests, the build and the docs. |
 | 24   | The unit tests and the packed tarball.                                      |
 
-The unit test runner needs Node 22.12 or newer, so Node 20 is covered through the tarball test only. That test imports and requires the package from plain Node and renders a document, which exercises the same code a consumer runs.
+The library's build tooling and the unit test runner need Node 22 or newer, so the package is built on 22 and Node 20 is covered through the tarball test only. That test imports and requires the package from plain Node and renders a document, which exercises the same code a consumer runs.
 
 ## Browsers
 
