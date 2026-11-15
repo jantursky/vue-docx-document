@@ -50,7 +50,7 @@ jobs:
         run: bun run test:pack
       - name: Browser tests of the rendering (Chromium, Firefox, WebKit)
         run: |
-          bunx playwright install --with-deps chromium firefox webkit
+          (cd packages/vue-docx-document && bunx playwright install --with-deps chromium firefox webkit)
           bun run test:browser
       - name: End-to-end tests of the demo app
         run: bun run --filter example test:e2e
