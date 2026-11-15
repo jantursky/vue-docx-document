@@ -85,7 +85,7 @@ jobs:
       - if: steps.check.outputs.publish == 'true'
         run: bun install --frozen-lockfile
       - if: steps.check.outputs.publish == 'true'
-        run: bunx playwright install --with-deps chromium firefox webkit
+        run: (cd packages/vue-docx-document && bunx playwright install --with-deps chromium firefox webkit)
       - if: steps.check.outputs.publish == 'true'
         run: bun run check
       - if: steps.check.outputs.publish == 'true'
