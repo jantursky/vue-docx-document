@@ -4,6 +4,8 @@ All notable changes to `vue-docx-document` are listed here. The format follows [
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-11-15
+
 ### Changed
 
 - The `vue` peer dependency is back at `^3.5.0`. A dependency update had raised it to `^3.5.45`, which asked consumers on older 3.5 releases to upgrade for no reason. CI tests 3.5.0 and fails if the range moves, and Dependabot no longer bumps it.
@@ -25,6 +27,7 @@ All notable changes to `vue-docx-document` are listed here. The format follows [
 
 - First release.
 
-[Unreleased]: https://github.com/jantursky/vue-docx-document/compare/1.0.1...HEAD
+[Unreleased]: https://github.com/jantursky/vue-docx-document/compare/1.0.2...HEAD
+[1.0.2]: https://github.com/jantursky/vue-docx-document/compare/1.0.1...1.0.2
 [1.0.1]: https://github.com/jantursky/vue-docx-document/compare/1.0.0...1.0.1
 [1.0.0]: https://github.com/jantursky/vue-docx-document/releases/tag/1.0.0
