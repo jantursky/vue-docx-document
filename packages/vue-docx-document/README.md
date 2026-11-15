@@ -88,6 +88,15 @@ const invoice = reactive({ customer: 'Ada', items: [{ name: 'Design review', pri
 
 The preview renders again, debounced, whenever the data the document reads changes. In Node, `await renderToBuffer(InvoiceDocument, props)` returns the bytes of the file.
 
+## Supported environments
+
+- **Vue:** `^3.5.0`. CI tests 3.5.0 and the newest release.
+- **Node:** 20.19 or newer. CI renders from the packed tarball on Node 20, 22 and 24, and runs the unit tests on 22 and 24.
+- **Browsers:** current Chromium, Firefox and WebKit, for the preview and downloads.
+- **Workers and edge runtimes:** `renderToBuffer()` and the other `renderTo*` functions need no DOM. They aren't in the test matrix.
+
+See [Supported environments](https://vue-docx-document-docs.vercel.app/guides/supported-environments) for details.
+
 ## API
 
 | export                                                                  | what it does                                                                                                      |

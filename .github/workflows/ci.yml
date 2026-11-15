@@ -26,6 +26,10 @@ jobs:
       - run: bun install --frozen-lockfile
       - name: Code samples in the README and docs are in sync
         run: node scripts/samples.js --check
+      - name: Reference pages cover the public API
+        run: node scripts/docs-drift.js
+      - name: Repository scripts
+        run: bun run test:scripts
       - name: Format
         run: bun run format:check
       - name: Lint
@@ -69,6 +73,8 @@ jobs:
   vue-versions:
     name: Vue ${{ matrix.vue }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -81,6 +87,11 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
+      - name: The peer range is the tested floor
+        run: |
+          range=$(node -p "require('./packages/vue-docx-document/package.json').peerDependencies.vue")
+          echo "peer range $range"
+          [ "$range" = '^3.5.0' ]
       - name: Install with vue@${{ matrix.vue }}
         run: |
           npm pkg set overrides.vue=${{ matrix.vue }}
@@ -97,3 +108,49 @@ jobs:
         run: bun run --filter vue-docx-document typecheck
       - name: Unit tests
         run: bun run test
+
+  # The package declares node >=20.19, so the packed tarball is installed and rendered on the
+  # oldest and the newest release; the main job covers 22. Vitest 5 needs Node 22.12 or
+  # newer, so the unit tests run on 24 only and Node 20 gets the tarball test.
+  node-versions:
+    name: Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 24]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+      - run: bun install --frozen-lockfile
+      - name: Build the library
+        run: bun run build:lib
+      - name: Unit tests
+        if: matrix.node != 20
+        run: bun run test
+      - name: Install the packed tarball and render from it
+        run: bun run test:pack
+
+  # A change to the library's source needs an entry under "Unreleased" in its changelog.
+  # Label a pull request "no-changelog" to skip the check, for a refactor nobody will notice.
+  changelog:
+    if: github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'no-changelog')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Changelog has an entry for source changes
+        run: node scripts/changelog-check.js "origin/${{ github.base_ref }}"

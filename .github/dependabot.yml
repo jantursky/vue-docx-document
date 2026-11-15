@@ -15,6 +15,11 @@ updates:
       # typescript-eslint and vue-tsc don't support TypeScript 6.1 yet, so it stays on 6.0.x.
       - dependency-name: typescript
         versions: ['>= 6.1']
+      # Dependabot raises the peer range together with the dev copy, which would narrow what
+      # consumers can install. The peer stays at the oldest tested version (^3.5.0), and the
+      # "Vue latest" job in ci.yml covers the newest release, so only major bumps come through.
+      - dependency-name: vue
+        update-types: ['version-update:semver-minor', 'version-update:semver-patch']
   - package-ecosystem: github-actions
     directory: /
     schedule:
