@@ -170,6 +170,7 @@ After the first setup, every push to `main` deploys to production and every pull
 See [CONTRIBUTING.md](CONTRIBUTING.md). Security issues go through [SECURITY.md](SECURITY.md), and everyone involved follows the [code of conduct](CODE_OF_CONDUCT.md).
 
 <!-- PROJECTS:START -->
+
 ## Other Projects & Products
 
 <table align="center">
