@@ -25,7 +25,9 @@ import {
   TextRun,
   renderToModel,
   type DocxModel,
+  type DocxWarning,
   type ParagraphModel,
+  type ResolveOptions,
   type TableModel,
 } from '../../src'
 import Report from '../fixtures/Report.vue'
@@ -710,5 +712,290 @@ describe('footnotes, images and the table of contents', () => {
     expect(model.updateFields).toBe(true)
     const defaults = await resolveSection(() => h(TableOfContents))
     expect(defaults.sections[0]!.children[0]).toEqual({ kind: 'toc', levels: [1, 3], hyperlinks: true })
+  })
+})
+
+describe('lenient rendering', () => {
+  const lenient = async (children: () => VNodeChild, options: ResolveOptions = {}) => {
+    const warnings: DocxWarning[] = []
+    const model = await renderToModel(singleSection(children), undefined, {
+      onWarn: (warning) => warnings.push(warning),
+      ...options,
+    })
+    return { model, blocks: model.sections[0]!.children, warnings }
+  }
+
+  it('leaves out misplaced elements and stray text with a located warning', async () => {
+    const { blocks, warnings } = await lenient(() => [
+      h(List, null, () => ['loose', h(ListItem, null, () => 'kept'), h(Paragraph, null, () => 'gone')]),
+      h(Table, null, () => [
+        'loose',
+        h(TableCell, null, () => 'gone'),
+        h(TableRow, null, () => [h(TableCell, null, () => 'cell'), h(Paragraph, null, () => 'gone')]),
+      ]),
+      h(Paragraph, null, () => ['text', h(Paragraph, null, () => 'gone')]),
+      h(TableRow),
+    ])
+    expect(blocks).toHaveLength(3)
+    expect((blocks[0] as ParagraphModel).children).toEqual([{ kind: 'text', text: 'kept', style: {} }])
+    const table = blocks[1] as TableModel
+    expect(table.rows).toHaveLength(1)
+    expect(table.rows[0]!.cells).toHaveLength(1)
+    expect(table.rows[0]!.cells[0]!.children).toEqual([
+      { kind: 'paragraph', style: { spaceAfter: 0 }, children: [{ kind: 'text', text: 'cell', style: {} }] },
+    ])
+    expect((blocks[2] as ParagraphModel).children).toEqual([{ kind: 'text', text: 'text', style: {} }])
+    expect(warnings).toEqual([
+      {
+        code: 'dropped-text',
+        message: 'Text inside <List> must be in a <ListItem>.',
+        section: 1,
+        element: '<List>',
+      },
+      {
+        code: 'misplaced-element',
+        message: "<Paragraph> can't be inside <List>.",
+        section: 1,
+        element: '<Paragraph>',
+      },
+      {
+        code: 'dropped-text',
+        message: 'Text inside <Table> must be in a <TableRow>.',
+        section: 1,
+        element: '<Table>',
+      },
+      {
+        code: 'misplaced-element',
+        message: '<TableCell> must be a direct child of <TableRow>, not of <Table>.',
+        section: 1,
+        element: '<TableCell>',
+      },
+      {
+        code: 'misplaced-element',
+        message: "<Paragraph> can't be inside <TableRow>.",
+        section: 1,
+        element: '<Paragraph>',
+      },
+      {
+        code: 'misplaced-element',
+        message: "<Paragraph> can't be inside <Paragraph>.",
+        section: 1,
+        element: '<Paragraph>',
+      },
+      {
+        code: 'misplaced-element',
+        message: '<TableRow> must be a direct child of <Table>, not of <Section>.',
+        section: 1,
+        element: '<TableRow>',
+      },
+    ])
+  })
+
+  it('leaves out footnotes, links, tables, lists and tables of contents where they cannot go', async () => {
+    let deep: VNodeChild = h(ListItem, null, () => 'deep')
+    for (let level = 0; level < 9; level++) {
+      const inner: VNodeChild = deep
+      deep = h(ListItem, null, (): VNodeChild => h(List, null, (): VNodeChild => inner))
+    }
+    const tree = deep
+    const { model, warnings } = await lenient(() => [
+      h(Header, null, () => ['head', h(Footnote, null, () => 'gone'), h(TableOfContents)]),
+      h(Paragraph, null, () => [
+        'body',
+        h(Footnote, null, () => ['note', h(Footnote, null, () => 'gone'), h(Table), h(List)]),
+        h(Link, { href: 'https://a.b' }, () => ['outer', h(Link, { href: 'https://c.d' }, () => 'gone')]),
+      ]),
+      h(List, null, () => tree),
+    ])
+    expect(model.sections[0]!.headers.default).toEqual([
+      { kind: 'paragraph', style: { spaceAfter: 0 }, children: [{ kind: 'text', text: 'head', style: {} }] },
+    ])
+    expect(model.footnotes).toEqual([
+      {
+        id: 1,
+        children: [
+          { kind: 'paragraph', style: { spaceAfter: 0 }, children: [{ kind: 'text', text: 'note', style: {} }] },
+        ],
+      },
+    ])
+    const [paragraph, ...items] = model.sections[0]!.children as ParagraphModel[]
+    expect(paragraph!.children.map((item) => item.kind)).toEqual(['text', 'footnote', 'link'])
+    expect(paragraph!.children[2]).toMatchObject({ children: [{ text: 'outer' }] })
+    expect(items).toHaveLength(9)
+    expect(warnings.map((warning) => [warning.code, warning.element, warning.message])).toEqual([
+      ['misplaced-element', '<Footnote>', '<Footnote> works in the body only, not in a <Header> or <Footer>.'],
+      [
+        'misplaced-element',
+        '<TableOfContents>',
+        '<TableOfContents> must be a direct child of <Section>, not of <Header>.',
+      ],
+      ['misplaced-element', '<Footnote>', "<Footnote> can't be inside another <Footnote>."],
+      ['misplaced-element', '<Table>', "<Table> can't be inside <Footnote>; footnotes hold paragraphs."],
+      ['misplaced-element', '<List>', "<List> can't be inside <Footnote>; footnotes hold paragraphs."],
+      ['misplaced-element', '<Link>', "<Link> can't be inside another <Link>."],
+      ['misplaced-element', '<List>', 'Lists nest 9 levels deep at most.'],
+    ])
+  })
+
+  it('leaves out elements outside a <Section> and stands in an empty one when there is none', async () => {
+    const warnings: DocxWarning[] = []
+    const onWarn = (warning: DocxWarning) => warnings.push(warning)
+    const model = await renderToModel(
+      defineComponent(() => () => h(Document, null, () => [h(Paragraph, null, () => 'gone'), 'stray'])),
+      undefined,
+      { onWarn },
+    )
+    expect(model.sections).toHaveLength(1)
+    expect(model.sections[0]!.children).toEqual([])
+    const plain = await resolveSection(() => 'x')
+    expect(model.sections[0]).toMatchObject({ page: plain.sections[0]!.page, margin: plain.sections[0]!.margin })
+    expect(warnings).toEqual([
+      { code: 'misplaced-element', message: "<Paragraph> can't be inside <Document>.", element: '<Paragraph>' },
+      {
+        code: 'dropped-text',
+        message: 'Text "stray" inside <Document> is dropped. Put it in a <Section>.',
+        element: '<Document>',
+      },
+      { code: 'missing-section', message: '<Document> needs at least one <Section>.', element: '<Document>' },
+    ])
+  })
+
+  it('numbers the section a warning comes from', async () => {
+    const warnings: DocxWarning[] = []
+    await renderToModel(
+      defineComponent(
+        () => () => h(Document, null, () => [h(Section, null, () => 'one'), h(Section, null, () => h(TableRow))]),
+      ),
+      undefined,
+      { onWarn: (warning) => warnings.push(warning) },
+    )
+    expect(warnings).toEqual([
+      expect.objectContaining({ code: 'misplaced-element', section: 2, element: '<TableRow>' }),
+    ])
+  })
+
+  it('still throws by default and with strict', async () => {
+    const component = singleSection(() => h(List, null, () => 'loose'))
+    await expect(renderToModel(component)).rejects.toThrow('Text inside <List> must be in a <ListItem>.')
+    await expect(renderToModel(component, undefined, {})).rejects.toThrow('Text inside <List> must be in a <ListItem>.')
+    const onWarn = vi.fn()
+    await expect(renderToModel(component, undefined, { onWarn, strict: true })).rejects.toThrow(
+      '[vue-docx-document] Text inside <List> must be in a <ListItem>.',
+    )
+    expect(onWarn).not.toHaveBeenCalled()
+  })
+
+  it('rejects on the first warning with strict', async () => {
+    const onWarn = vi.fn()
+    const component = singleSection(() => h(Paragraph, null, () => h(Link, { href: 'javascript:alert(1)' }, () => 'x')))
+    await expect(renderToModel(component, undefined, { strict: true, onWarn })).rejects.toThrow(
+      '[vue-docx-document] unsafe-link: The link "javascript:alert(1)" is not http, https, mailto or tel, so it is written as plain text. (section 1, <Link>)',
+    )
+    expect(onWarn).not.toHaveBeenCalled()
+  })
+
+  it('warns to the console once per message and render with strict: false', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const component = singleSection(() => [h(List, null, () => 'loose'), h(List, null, () => 'loose')])
+    const first = await renderToModel(component, undefined, { strict: false })
+    expect(first.sections[0]!.children).toEqual([])
+    expect(warn).toHaveBeenCalledExactlyOnceWith(
+      '[vue-docx-document] Text inside <List> must be in a <ListItem>. (section 1, <List>)',
+    )
+    await renderToModel(component, undefined, { strict: false })
+    expect(warn).toHaveBeenCalledTimes(2)
+    warn.mockRestore()
+  })
+
+  it('warns about an unsafe link again in the next render', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const component = singleSection(() => h(Paragraph, null, () => h(Link, { href: 'ftp://x' }, () => 'x')))
+    await renderToModel(component)
+    await renderToModel(component)
+    expect(warn).toHaveBeenCalledTimes(2)
+    warn.mockRestore()
+  })
+
+  it('leaves out images that fail to load, wherever they are', async () => {
+    const bad = new Uint8Array([1, 2, 3])
+    const image = () => h(Image, { src: bad, alt: 'Bad' })
+    const warnings: DocxWarning[] = []
+    const model = await renderToModel(
+      defineComponent(
+        () => () =>
+          h(Document, null, () => [
+            h(Section, null, () => 'first'),
+            h(Section, null, () => [
+              h(Header, null, () => image()),
+              h(Footer, null, () => ['foot', image()]),
+              h(Paragraph, null, () => [
+                'a',
+                image(),
+                h(Link, { href: 'https://a.b' }, () => ['b', image()]),
+                h(Bookmark, { id: 'here' }, () => ['c', image()]),
+                h(Footnote, null, () => ['d', image()]),
+                h(Image, { src: PNG, alt: 'Good' }),
+              ]),
+              h(Table, null, () => h(TableRow, null, () => h(TableCell, null, () => image()))),
+              h(TableOfContents),
+            ]),
+          ]),
+      ),
+      undefined,
+      { onWarn: (warning) => warnings.push(warning) },
+    )
+    const section = model.sections[1]!
+    expect(section.headers.default).toEqual([{ kind: 'paragraph', style: { spaceAfter: 0 }, children: [] }])
+    expect(section.footers.default).toEqual([
+      { kind: 'paragraph', style: { spaceAfter: 0 }, children: [{ kind: 'text', text: 'foot', style: {} }] },
+      { kind: 'paragraph', style: { spaceAfter: 0 }, children: [] },
+    ])
+    const [paragraph, table, toc] = section.children
+    expect((paragraph as ParagraphModel).children).toEqual([
+      { kind: 'text', text: 'a', style: {} },
+      { kind: 'link', href: 'https://a.b', children: [expect.objectContaining({ text: 'b' })] },
+      { kind: 'bookmark', id: 'here', children: [{ kind: 'text', text: 'c', style: {} }] },
+      { kind: 'footnote', id: 1 },
+      expect.objectContaining({ kind: 'image', alt: 'Good', type: 'png' }),
+    ])
+    expect((table as TableModel).rows[0]!.cells[0]!.children).toEqual([
+      { kind: 'paragraph', style: { spaceAfter: 0 }, children: [] },
+    ])
+    expect(toc).toEqual({ kind: 'toc', levels: [1, 3], hyperlinks: true })
+    expect(model.footnotes[0]!.children[0]!.children).toEqual([{ kind: 'text', text: 'd', style: {} }])
+    expect(warnings).toHaveLength(7)
+    expect(warnings[0]).toEqual({
+      code: 'image-failed',
+      message: 'An <Image> src is not a PNG, JPEG, GIF, BMP or SVG image.',
+      section: 2,
+      element: '<Image>',
+    })
+  })
+
+  it('loads images through loadImage', async () => {
+    const loadImage = vi.fn((src: string) =>
+      src === 'asset:logo' ? Promise.resolve(PNG) : Promise.reject(new Error('unknown asset')),
+    )
+    const { blocks, warnings } = await lenient(
+      () => [h(Image, { src: 'asset:logo' }), h(Image, { src: 'asset:other' })],
+      { loadImage },
+    )
+    expect(blocks[0]).toMatchObject({ children: [{ kind: 'image', data: PNG, width: 1.5, height: 0.75 }] })
+    expect(blocks[1]).toEqual({ kind: 'paragraph', style: {}, children: [] })
+    expect(warnings).toEqual([
+      {
+        code: 'image-failed',
+        message: `Couldn't load the image "asset:other": unknown asset`,
+        section: 1,
+        element: '<Image>',
+      },
+    ])
+    await expect(
+      renderToModel(
+        singleSection(() => h(Image, { src: 'asset:other' })),
+        undefined,
+        { loadImage },
+      ),
+    ).rejects.toThrow(`[vue-docx-document] Couldn't load the image "asset:other": unknown asset`)
   })
 })

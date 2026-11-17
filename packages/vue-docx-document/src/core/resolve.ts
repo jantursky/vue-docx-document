@@ -30,7 +30,8 @@ import {
   PAGE_MARGIN,
   PAGE_SIZES,
 } from './defaults'
-import { fitImage, intrinsicSize, loadImage, sniffType, type ImageCache } from './images'
+import { createReporter, PREFIX, type DiagnosticOptions, type Reporter, type WarningCode } from './diagnostics'
+import { fitImage, intrinsicSize, loadImage, sniffType, type ImageCache, type ImageOptions } from './images'
 import type {
   BlockModel,
   CellModel,
@@ -47,10 +48,10 @@ import type {
   TableModel,
 } from './model'
 import { TYPES } from './nodes'
+import { pruneInlines } from './prune'
 import type { TreeNode } from './snapshot'
 import { border, borderSides, cascade, defined, lengthSides, paragraphStyle, runStyle } from './styles'
 import { optionalPoints, toPoints } from './units'
-import { warnOnce } from './warn'
 
 type Child = TreeNode | string
 
@@ -96,12 +97,6 @@ const REQUIRED_PARENT: Record<string, string> = {
   [TYPES.listItem]: TYPES.list,
 }
 
-const misplaced = (type: string, parent: string): never => {
-  const required = REQUIRED_PARENT[type]
-  if (required) return fail(`${tag(type)} must be a direct child of ${tag(required)}, not of ${tag(parent)}.`)
-  return fail(`${tag(type)} can't be inside ${tag(parent)}.`)
-}
-
 /** Inline elements: loose ones in a block container share an implicit paragraph. */
 const INLINE = new Set<string>([
   TYPES.run,
@@ -119,6 +114,12 @@ const SAFE_LINK = /^(https?|mailto|tel):/i
 const BOOKMARK_ID = /^[A-Za-z]\w{0,39}$/
 
 interface State {
+  report: Reporter
+  /** 1-based number of the `<Section>` being walked. */
+  section?: number
+  imageOptions: ImageOptions
+  /** Images that failed to load in a lenient render, left out once all have loaded. */
+  failedImages: Set<ImageModel>
   lists: ListModel[]
   footnotes: DocxModel['footnotes']
   /** Image loads, awaited once the tree is walked. */
@@ -141,6 +142,34 @@ interface Context {
   align?: Align
   inLink: boolean
 }
+
+const warn = (state: State, code: WarningCode, message: string, element?: string, section = state.section): void => {
+  state.report.warn(defined({ code, message, section, element }))
+}
+
+/**
+ * Structure that can't be written. It throws, unless the render is lenient: then it warns and
+ * returns nothing, so the caller leaves the element out.
+ */
+const invalid = (state: State, code: WarningCode, message: string, element: string): [] => {
+  if (!state.report.lenient) fail(message)
+  warn(state, code, message, element)
+  return []
+}
+
+const misplaced = (state: State, type: string, parent: string): [] => {
+  const required = REQUIRED_PARENT[type]
+  const message = required
+    ? `${tag(type)} must be a direct child of ${tag(required)}, not of ${tag(parent)}.`
+    : `${tag(type)} can't be inside ${tag(parent)}.`
+  return invalid(state, 'misplaced-element', message, tag(type))
+}
+
+const droppedText = (state: State, parent: string, expected: string): [] =>
+  invalid(state, 'dropped-text', `Text inside ${tag(parent)} must be in a ${tag(expected)}.`, tag(parent))
+
+const notInFootnote = (state: State, type: string): [] =>
+  invalid(state, 'misplaced-element', `${tag(type)} can't be inside <Footnote>; footnotes hold paragraphs.`, tag(type))
 
 interface ListOwner {
   model: ListModel
@@ -195,8 +224,9 @@ const textItems = (text: string, style: RunStyleModel): InlineModel[] =>
     return index === 0 ? [item] : [{ kind: 'break' }, item]
   })
 
-const loadInto = async (model: ImageModel, props: ImageProps, cache: ImageCache): Promise<void> => {
-  const data = await loadImage(props.src, cache)
+const loadInto = async (model: ImageModel, props: ImageProps, state: State): Promise<void> => {
+  const load = (src: ImageProps['src']) => loadImage(src, state.images, state.imageOptions)
+  const data = await load(props.src)
   const type = props.type ?? sniffType(data) ?? fail('An <Image> src is not a PNG, JPEG, GIF, BMP or SVG image.')
   const size = fitImage(intrinsicSize(data, type), optionalPoints(props.width), optionalPoints(props.height))
   Object.assign(model, { data, type, width: size.width, height: size.height })
@@ -204,7 +234,7 @@ const loadInto = async (model: ImageModel, props: ImageProps, cache: ImageCache)
   if (props.fallback == null) {
     fail("An SVG <Image> needs a fallback: a PNG, JPEG, GIF or BMP image that Word shows where it can't draw SVG.")
   }
-  const fallback = await loadImage(props.fallback, cache)
+  const fallback = await load(props.fallback)
   const fallbackType = sniffType(fallback)
   if (!fallbackType || fallbackType === 'svg')
     fail('The fallback of an SVG <Image> must be a PNG, JPEG, GIF or BMP image.')
@@ -217,13 +247,34 @@ const image = (node: TreeNode, ctx: Context): ImageModel => {
   const model: ImageModel = { kind: 'image', data: new Uint8Array(), type: 'png', width: 0, height: 0 }
   if (props.alt !== undefined) model.alt = props.alt
   if (props.title !== undefined) model.title = props.title
-  ctx.state.tasks.push(loadInto(model, props, ctx.state.images))
+  const { state } = ctx
+  const loading = loadInto(model, props, state)
+  if (!state.report.lenient) {
+    state.tasks.push(loading)
+    return model
+  }
+  // Read now: the load ends after the walk has moved on to later sections.
+  const { section } = state
+  state.tasks.push(
+    loading.catch((error: unknown) => {
+      state.failedImages.add(model)
+      const message = error instanceof Error ? error.message : String(error)
+      const text = message.startsWith(`${PREFIX} `) ? message.slice(PREFIX.length + 1) : message
+      warn(state, 'image-failed', text, tag(TYPES.image), section)
+    }),
+  )
   return model
 }
 
-const footnote = (node: TreeNode, ctx: Context): InlineModel => {
-  if (ctx.where === 'header') fail('<Footnote> works in the body only, not in a <Header> or <Footer>.')
-  if (ctx.where === 'footnote') fail("<Footnote> can't be inside another <Footnote>.")
+const footnote = (node: TreeNode, ctx: Context): InlineModel[] => {
+  const element = tag(TYPES.footnote)
+  if (ctx.where === 'header') {
+    const message = '<Footnote> works in the body only, not in a <Header> or <Footer>.'
+    return invalid(ctx.state, 'misplaced-element', message, element)
+  }
+  if (ctx.where === 'footnote') {
+    return invalid(ctx.state, 'misplaced-element', "<Footnote> can't be inside another <Footnote>.", element)
+  }
   const { footnotes } = ctx.state
   const entry = { id: footnotes.length + 1, children: [] as ParagraphModel[] }
   footnotes.push(entry)
@@ -235,11 +286,12 @@ const footnote = (node: TreeNode, ctx: Context): InlineModel => {
     compact: true,
     inLink: false,
   }) as ParagraphModel[]
-  return { kind: 'footnote', id: entry.id }
+  return [{ kind: 'footnote', id: entry.id }]
 }
 
 const link = (node: TreeNode, ctx: Context): InlineModel[] => {
-  if (ctx.inLink) fail("<Link> can't be inside another <Link>.")
+  if (ctx.inLink)
+    return invalid(ctx.state, 'misplaced-element', "<Link> can't be inside another <Link>.", tag(TYPES.link))
   const href = node.props.href as string | undefined
   const anchor = node.props.anchor as string | undefined
   const children = (run: RunStyleModel) => inlines(node.children, { ...ctx, run, inLink: true, parent: node.type })
@@ -250,7 +302,12 @@ const link = (node: TreeNode, ctx: Context): InlineModel[] => {
     return [{ kind: 'link', anchor, children: linked() }]
   }
   if (!SAFE_LINK.test(href.trim())) {
-    warnOnce(`The link "${href}" is not http, https, mailto or tel, so it is written as plain text.`)
+    warn(
+      ctx.state,
+      'unsafe-link',
+      `The link "${href}" is not http, https, mailto or tel, so it is written as plain text.`,
+      tag(TYPES.link),
+    )
     return children(ctx.run)
   }
   return [{ kind: 'link', href: href.trim(), children: linked() }]
@@ -298,11 +355,11 @@ const inline = (child: Child, ctx: Context): InlineModel[] => {
         },
       ]
     case TYPES.footnote:
-      return [footnote(child, ctx)]
+      return footnote(child, ctx)
     case TYPES.image:
       return [image(child, ctx)]
     default:
-      return misplaced(child.type, ctx.parent)
+      return misplaced(ctx.state, child.type, ctx.parent)
   }
 }
 
@@ -369,8 +426,15 @@ const listItem = (node: TreeNode, ctx: Context, level: number, owner: ListOwner)
 }
 
 const list = (node: TreeNode, ctx: Context, level = 0, parentOwner?: ListOwner): ParagraphModel[] => {
-  if (ctx.where === 'footnote') fail("<List> can't be inside <Footnote>; footnotes hold paragraphs.")
-  if (level >= MAX_LIST_LEVELS) fail(`Lists nest ${MAX_LIST_LEVELS} levels deep at most.`)
+  if (ctx.where === 'footnote') return notInFootnote(ctx.state, TYPES.list)
+  if (level >= MAX_LIST_LEVELS) {
+    return invalid(
+      ctx.state,
+      'misplaced-element',
+      `Lists nest ${MAX_LIST_LEVELS} levels deep at most.`,
+      tag(TYPES.list),
+    )
+  }
   const props = node.props as ListProps
   let owner = parentOwner
   if (!owner) {
@@ -388,8 +452,8 @@ const list = (node: TreeNode, ctx: Context, level = 0, parentOwner?: ListOwner):
   }
   const run = cascade(ctx.run, props)
   return node.children.flatMap((child) => {
-    if (typeof child === 'string') return fail(`Text inside <List> must be in a <ListItem>.`)
-    if (child.type !== TYPES.listItem) return misplaced(child.type, TYPES.list)
+    if (typeof child === 'string') return droppedText(ctx.state, TYPES.list, TYPES.listItem)
+    if (child.type !== TYPES.listItem) return misplaced(ctx.state, child.type, TYPES.list)
     return listItem(child, { ...ctx, run, parent: TYPES.list }, level, owner)
   })
 }
@@ -425,11 +489,11 @@ const tableWidth = (value: TableProps['width']): TableModel['width'] => {
   return { value: toPoints(value as Exclude<typeof value, `${number}%`>), unit: 'pt' }
 }
 
-const structuralChildren = (node: TreeNode, expected: string): TreeNode[] =>
-  node.children.map((child) => {
-    if (typeof child === 'string') return fail(`Text inside ${tag(node.type)} must be in a ${tag(expected)}.`)
-    if (child.type !== expected) return misplaced(child.type, node.type)
-    return child
+const structuralChildren = (node: TreeNode, expected: string, state: State): TreeNode[] =>
+  node.children.flatMap((child) => {
+    if (typeof child === 'string') return droppedText(state, node.type, expected)
+    if (child.type !== expected) return misplaced(state, child.type, node.type)
+    return [child]
   })
 
 const cell = (node: TreeNode, ctx: Context, run: RunStyleModel, rowBackground?: string): CellModel => {
@@ -461,12 +525,11 @@ const row = (node: TreeNode, ctx: Context, run: RunStyleModel): RowModel => {
     header: Boolean(props.header),
     cantSplit: Boolean(props.cantSplit),
     height: optionalPoints(props.height),
-    cells: structuralChildren(node, TYPES.cell).map((child) => cell(child, ctx, rowRun, background)),
+    cells: structuralChildren(node, TYPES.cell, ctx.state).map((child) => cell(child, ctx, rowRun, background)),
   })
 }
 
 const table = (node: TreeNode, ctx: Context): TableModel => {
-  if (ctx.where === 'footnote') fail("<Table> can't be inside <Footnote>; footnotes hold paragraphs.")
   const props = node.props as TableProps
   const run = cascade(ctx.run, props)
   const columnWidths = (props.columnWidths ?? []).map(toPoints)
@@ -478,7 +541,7 @@ const table = (node: TreeNode, ctx: Context): TableModel => {
     align: props.align,
     borders: tableBorders(props.borders),
     cellPadding: lengthSides(props.cellPadding),
-    rows: structuralChildren(node, TYPES.row).map((child) => row(child, ctx, run)),
+    rows: structuralChildren(node, TYPES.row, ctx.state).map((child) => row(child, ctx, run)),
   })
 }
 
@@ -487,7 +550,7 @@ const block = (node: TreeNode, ctx: Context): BlockModel[] => {
     case TYPES.paragraph:
       return [paragraph(node, ctx)]
     case TYPES.table:
-      return [table(node, ctx)]
+      return ctx.where === 'footnote' ? notInFootnote(ctx.state, TYPES.table) : [table(node, ctx)]
     case TYPES.list:
       return list(node, ctx)
     case TYPES.image: {
@@ -498,7 +561,7 @@ const block = (node: TreeNode, ctx: Context): BlockModel[] => {
     case TYPES.pageBreak:
       return [{ kind: 'paragraph', style: {}, children: [{ kind: 'pageBreak' }] }]
     case TYPES.toc: {
-      if (ctx.parent !== TYPES.section) misplaced(node.type, ctx.parent)
+      if (ctx.parent !== TYPES.section) return misplaced(ctx.state, node.type, ctx.parent)
       const props = node.props as TableOfContentsProps
       ctx.state.toc = true
       return [
@@ -511,7 +574,7 @@ const block = (node: TreeNode, ctx: Context): BlockModel[] => {
       ]
     }
     default:
-      return misplaced(node.type, ctx.parent)
+      return misplaced(ctx.state, node.type, ctx.parent)
   }
 }
 
@@ -627,10 +690,18 @@ const headingsOf = (overrides: DocumentProps['headings'] = {}): DocxModel['headi
     }),
   )
 
-/** Turns the snapshot into the document model. Loads images; never loads `docx`. */
-export const resolve = async (tree: TreeNode): Promise<DocxModel> => {
+export type ResolveOptions = DiagnosticOptions & ImageOptions
+
+/**
+ * Turns the snapshot into the document model. Loads images; never loads `docx`. Warnings go to
+ * `options.onWarn`, or to the console once per message and render.
+ */
+export const resolve = async (tree: TreeNode, options: ResolveOptions = {}): Promise<DocxModel> => {
   const props = tree.props as DocumentProps
   const state: State = {
+    report: createReporter(options),
+    imageOptions: { loadImage: options.loadImage, imageTimeout: options.imageTimeout },
+    failedImages: new Set(),
     lists: [],
     footnotes: [],
     tasks: [],
@@ -640,16 +711,31 @@ export const resolve = async (tree: TreeNode): Promise<DocxModel> => {
     toc: false,
   }
   const sections: SectionModel[] = []
+  const document = tag(TYPES.document)
   for (const child of tree.children) {
     if (typeof child === 'string') {
-      warnOnce(`Text "${child.trim().slice(0, 40)}" inside <Document> is dropped. Put it in a <Section>.`)
-    } else if (child.type === TYPES.section) sections.push(section(child, state))
-    else misplaced(child.type, TYPES.document)
+      const message = `Text "${child.trim().slice(0, 40)}" inside ${document} is dropped. Put it in a <Section>.`
+      warn(state, 'dropped-text', message, document)
+    } else if (child.type === TYPES.section) {
+      state.section = sections.length + 1
+      sections.push(section(child, state))
+      state.section = undefined
+    } else misplaced(state, child.type, TYPES.document)
   }
-  if (sections.length === 0) fail('<Document> needs at least one <Section>.')
+  if (sections.length === 0) {
+    invalid(state, 'missing-section', `${document} needs at least one <Section>.`, document)
+    sections.push(section({ type: TYPES.section, props: {}, children: [] }, state))
+  }
   await Promise.all(state.tasks)
   for (const anchor of state.anchors) {
-    if (!state.bookmarks.has(anchor)) warnOnce(`<Link anchor="${anchor}"> points at no <Bookmark id="${anchor}">.`)
+    if (!state.bookmarks.has(anchor)) {
+      warn(
+        state,
+        'missing-bookmark',
+        `<Link anchor="${anchor}"> points at no <Bookmark id="${anchor}">.`,
+        tag(TYPES.link),
+      )
+    }
   }
   const model: DocxModel = {
     meta: defined({
@@ -677,5 +763,5 @@ export const resolve = async (tree: TreeNode): Promise<DocxModel> => {
     updateFields: state.toc,
   }
   if (props.styles) model.styles = props.styles
-  return model
+  return state.failedImages.size > 0 ? pruneInlines(model, state.failedImages) : model
 }

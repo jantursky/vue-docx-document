@@ -5,7 +5,7 @@ import { DOCX_MIME } from './mime'
 import type { DocxModel } from './model'
 import { createRoot } from './nodes'
 import { renderer } from './renderer'
-import { resolve } from './resolve'
+import { resolve, type ResolveOptions } from './resolve'
 import { snapshot } from './snapshot'
 import { toDocx, writeModel, type WriteOptions } from './write'
 
@@ -13,14 +13,17 @@ type Props = Record<string, unknown>
 
 export { DOCX_MIME }
 
+/** Options of a render that resolves the document and writes the file. */
+export type RenderOptions = ResolveOptions & WriteOptions
+
 export interface DocxInstance {
   /** The resolved document, as the preview draws it. */
-  toModel(): Promise<DocxModel>
-  toBlob(options?: WriteOptions): Promise<Blob>
-  toBuffer(options?: WriteOptions): Promise<Uint8Array>
-  toBase64(options?: WriteOptions): Promise<string>
+  toModel(options?: ResolveOptions): Promise<DocxModel>
+  toBlob(options?: RenderOptions): Promise<Blob>
+  toBuffer(options?: RenderOptions): Promise<Uint8Array>
+  toBase64(options?: RenderOptions): Promise<string>
   /** The `docx` Document, for anything the components don't cover. */
-  toDocx(): Promise<DocxDocument>
+  toDocx(options?: ResolveOptions): Promise<DocxDocument>
   /** Calls `listener` after every change to the tree. Returns a function that unsubscribes. */
   onChange(listener: () => void): () => void
   unmount(): void
@@ -55,12 +58,12 @@ export const createDocx = (document: Component, props?: MaybeRefOrGetter<Props |
   app.mount(root)
   let mounted = true
 
-  const toModel = (): Promise<DocxModel> => {
+  const toModel = (options?: ResolveOptions): Promise<DocxModel> => {
     if (!mounted) return Promise.reject(new Error('[vue-docx-document] This document was unmounted.'))
     try {
       const [failure] = failures.values()
       if (failures.size > 0) throw failure
-      return resolve(snapshot(root))
+      return resolve(snapshot(root), options)
     } catch (error) {
       return Promise.reject(error instanceof Error ? error : new Error(String(error)))
     }
@@ -75,18 +78,18 @@ export const createDocx = (document: Component, props?: MaybeRefOrGetter<Props |
   return {
     toModel,
     async toBlob(options) {
-      const blob = await writeModel(await toModel(), 'blob', options)
+      const blob = await writeModel(await toModel(options), 'blob', options)
       onRender(blob)
       return blob
     },
     async toBuffer(options) {
-      return writeModel(await toModel(), 'uint8array', options)
+      return writeModel(await toModel(options), 'uint8array', options)
     },
     async toBase64(options) {
-      return writeModel(await toModel(), 'base64', options)
+      return writeModel(await toModel(options), 'base64', options)
     },
-    async toDocx() {
-      return toDocx(await toModel())
+    async toDocx(options) {
+      return toDocx(await toModel(options))
     },
     onChange(listener) {
       listeners.add(listener)
@@ -116,20 +119,20 @@ const once = async <T>(
 }
 
 /** Renders once to the bytes of a .docx file. Works in Node, workers and the browser. */
-export const renderToBuffer = (document: Component, props?: Props, options?: WriteOptions): Promise<Uint8Array> =>
+export const renderToBuffer = (document: Component, props?: Props, options?: RenderOptions): Promise<Uint8Array> =>
   once(document, props, (instance) => instance.toBuffer(options))
 
 /** Renders once to a Blob with the Word MIME type. */
-export const renderToBlob = (document: Component, props?: Props, options?: WriteOptions): Promise<Blob> =>
+export const renderToBlob = (document: Component, props?: Props, options?: RenderOptions): Promise<Blob> =>
   once(document, props, (instance) => instance.toBlob(options))
 
 /** Renders once to a base64 string. */
-export const renderToBase64 = (document: Component, props?: Props, options?: WriteOptions): Promise<string> =>
+export const renderToBase64 = (document: Component, props?: Props, options?: RenderOptions): Promise<string> =>
   once(document, props, (instance) => instance.toBase64(options))
 
 /** Renders once to the resolved model, without loading `docx`. */
-export const renderToModel = (document: Component, props?: Props): Promise<DocxModel> =>
-  once(document, props, (instance) => instance.toModel())
+export const renderToModel = (document: Component, props?: Props, options?: ResolveOptions): Promise<DocxModel> =>
+  once(document, props, (instance) => instance.toModel(options))
 
 /** Saves a Blob in the browser through a temporary link. */
 export const saveBlob = (blob: Blob, fileName: string): void => {
@@ -151,7 +154,7 @@ export const downloadDocx = async (
   document: Component,
   props?: Props,
   fileName = 'document.docx',
-  options?: WriteOptions,
+  options?: RenderOptions,
 ): Promise<Blob> => {
   const blob = await renderToBlob(document, props, options)
   saveBlob(blob, fileName.endsWith('.docx') ? fileName : `${fileName}.docx`)

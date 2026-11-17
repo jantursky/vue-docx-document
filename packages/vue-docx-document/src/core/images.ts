@@ -59,15 +59,33 @@ const readCapped = async (response: Response, url: string): Promise<Uint8Array> 
   return bytes
 }
 
-const fetchImage = async (url: string): Promise<Uint8Array> => {
-  let response: Response
+const errorText = (error: unknown): string => (error instanceof Error ? error.message : String(error))
+
+const fetchImage = async (url: string, timeout: number): Promise<Uint8Array> => {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeout)
+  const failed = (error: unknown): never =>
+    fail(
+      `Couldn't load the image at ${url}: ${controller.signal.aborted ? `no answer in ${timeout} ms.` : errorText(error)}`,
+    )
   try {
-    response = await fetch(url, { redirect: 'error' })
-  } catch (error) {
-    return fail(`Couldn't load the image at ${url}: ${error instanceof Error ? error.message : String(error)}`)
+    let response: Response
+    try {
+      response = await fetch(url, { redirect: 'error', signal: controller.signal })
+    } catch (error) {
+      return failed(error)
+    }
+    if (!response.ok) fail(`Couldn't load the image at ${url}: HTTP ${response.status}.`)
+    // The timeout also covers a body that is still streaming in.
+    try {
+      return await readCapped(response, url)
+    } catch (error) {
+      if (!controller.signal.aborted) throw error
+      return failed(error)
+    }
+  } finally {
+    clearTimeout(timer)
   }
-  if (!response.ok) fail(`Couldn't load the image at ${url}: HTTP ${response.status}.`)
-  return readCapped(response, url)
 }
 
 /** Images fetched during one render, by URL, so an image used twice downloads once. */
@@ -81,8 +99,20 @@ const resolveUrl = (src: string): URL => {
   }
 }
 
-/** Reads the bytes of an image source: a data URI, an http(s) URL, or the bytes themselves. */
-export const loadImage = async (src: ImageSource, cache: ImageCache): Promise<Uint8Array> => {
+/** How long an image URL may take to download, in milliseconds. */
+export const IMAGE_TIMEOUT = 10_000
+
+export interface ImageOptions {
+  /**
+   * Loads every string `src` and `fallback` that is not a data URI, in place of `fetch`. What it
+   * returns is read like a `src`, so it may also hand back a URL or a data URI.
+   */
+  loadImage?: (src: string) => Promise<ImageSource>
+  /** Milliseconds an image URL may take to download. Default 10 000. */
+  imageTimeout?: number
+}
+
+const read = async (src: ImageSource, cache: ImageCache, timeout: number): Promise<Uint8Array> => {
   if (src instanceof Uint8Array) return src
   if (src instanceof ArrayBuffer) return new Uint8Array(src)
   if (typeof Blob !== 'undefined' && src instanceof Blob) return new Uint8Array(await src.arrayBuffer())
@@ -95,8 +125,41 @@ export const loadImage = async (src: ImageSource, cache: ImageCache): Promise<Ui
   }
   let pending = cache.get(url.href)
   if (!pending) {
-    pending = fetchImage(url.href)
+    pending = fetchImage(url.href, timeout)
     cache.set(url.href, pending)
+  }
+  return pending
+}
+
+const readLoaded = async (
+  load: NonNullable<ImageOptions['loadImage']>,
+  src: string,
+  cache: ImageCache,
+  timeout: number,
+): Promise<Uint8Array> => {
+  let loaded: ImageSource
+  try {
+    loaded = await load(src)
+  } catch (error) {
+    return fail(`Couldn't load the image "${describe(src)}": ${errorText(error)}`)
+  }
+  return read(loaded, cache, timeout)
+}
+
+/**
+ * Reads the bytes of an image source: a data URI, an http(s) URL, or the bytes themselves.
+ * With `options.loadImage`, that loads the strings that are not data URIs instead.
+ */
+export const loadImage = (src: ImageSource, cache: ImageCache, options: ImageOptions = {}): Promise<Uint8Array> => {
+  const timeout = options.imageTimeout ?? IMAGE_TIMEOUT
+  const load = options.loadImage
+  if (!load || typeof src !== 'string' || /^data:/i.test(src)) return read(src, cache, timeout)
+  // Not a URL, so it never meets an entry `read` adds when the loader hands back a URL.
+  const key = `loader ${src}`
+  let pending = cache.get(key)
+  if (!pending) {
+    pending = readLoaded(load, src, cache, timeout)
+    cache.set(key, pending)
   }
   return pending
 }

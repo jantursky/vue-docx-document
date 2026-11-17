@@ -4,6 +4,17 @@ All notable changes to `vue-docx-document` are listed here. The format follows [
 
 ## [Unreleased]
 
+### Added
+
+- Lenient rendering: with an `onWarn` handler or `strict: false`, a misplaced element (such as text directly in a `<List>`, a `<TableCell>` outside a `<TableRow>` or a `<Paragraph>` outside a `<Section>`), a `<Document>` without a `<Section>` and an image that fails to load are left out with a warning, and the rest of the document is written. Without either option they still throw. `strict: true` rejects the render on the first warning. The render functions, the `DocxInstance` methods, `useDocx` and `useDocxModel` take these options.
+- Warnings are `{ code, message, section, element }` objects. Match on `code`: `misplaced-element`, `dropped-text`, `missing-section`, `image-failed`, `unsafe-link` or `missing-bookmark`.
+- A `loadImage` option loads image sources that are not data URIs, in place of `fetch`, for files on disk, authenticated assets or a scheme of your own.
+- Image URLs time out after 10 seconds. The `imageTimeout` option changes that.
+
+### Changed
+
+- A warning that goes to the console repeats once per render, instead of once per process.
+
 ## [1.0.2] - 2026-11-15
 
 ### Changed

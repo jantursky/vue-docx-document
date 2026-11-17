@@ -12,10 +12,11 @@ import {
 
 import { createDocx, type DocxInstance } from '../core/docx'
 import type { DocxModel } from '../core/model'
+import type { ResolveOptions } from '../core/resolve'
 
 type Props = Record<string, unknown>
 
-export interface UseDocxModelOptions {
+export interface UseDocxModelOptions extends ResolveOptions {
   /** Milliseconds to wait after a change before resolving again. Default 50. */
   debounce?: number
 }
@@ -33,7 +34,7 @@ export function useDocxModel(
   props?: MaybeRefOrGetter<Props | undefined>,
   options: UseDocxModelOptions = {},
 ): UseDocxModelReturn {
-  const { debounce = 50 } = options
+  const { debounce = 50, ...resolveOptions } = options
   const model = shallowRef<DocxModel | null>(null)
   const loading = ref(true)
   const error = shallowRef<unknown>(null)
@@ -49,7 +50,7 @@ export function useDocxModel(
     const current = ++run
     loading.value = true
     try {
-      const result = await instance.toModel()
+      const result = await instance.toModel(resolveOptions)
       if (current !== run) return result
       model.value = result
       error.value = null

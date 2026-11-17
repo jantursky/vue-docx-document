@@ -2,9 +2,9 @@ import { describe, expect, it, vi } from 'vitest'
 import { defineComponent, effectScope, h, nextTick, ref } from 'vue'
 import { mount } from '@vue/test-utils'
 
-import { useDocx, useDocxModel } from '../../src'
+import { List, ListItem, useDocx, useDocxModel } from '../../src'
 import Report from '../fixtures/Report.vue'
-import { Names } from '../fixtures'
+import { Names, singleSection } from '../fixtures'
 
 const until = (condition: () => boolean) =>
   vi.waitFor(() => {
@@ -189,6 +189,23 @@ describe('useDocxModel', () => {
     const result = scope.run(() => useDocxModel(defineComponent(() => () => h('div'))))!
     await until(() => result.error.value !== null)
     expect(result.model.value).toBeNull()
+    scope.stop()
+  })
+})
+
+describe('lenient options', () => {
+  const Streamed = singleSection(() => h(List, null, () => [h(ListItem, null, () => 'Done'), 'half-written']))
+
+  it('reach the render of useDocx and useDocxModel', async () => {
+    const onWarn = vi.fn()
+    const scope = effectScope()
+    const file = scope.run(() => useDocx(Streamed, undefined, { auto: false, onWarn }))!
+    const model = scope.run(() => useDocxModel(Streamed, undefined, { debounce: 0, onWarn }))!
+    expect(await file.update()).not.toBeNull()
+    await until(() => model.model.value !== null)
+    expect(model.model.value!.sections[0]!.children).toHaveLength(1)
+    expect(onWarn).toHaveBeenCalledTimes(2)
+    expect(onWarn).toHaveBeenCalledWith(expect.objectContaining({ code: 'dropped-text', element: '<List>' }))
     scope.stop()
   })
 })

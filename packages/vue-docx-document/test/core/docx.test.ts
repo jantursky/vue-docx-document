@@ -5,13 +5,15 @@ import {
   createDocx,
   Document,
   downloadDocx,
+  List,
+  ListItem,
   Paragraph,
   renderToBuffer,
   renderToModel,
   saveBlob,
   Section,
 } from '../../src'
-import { Names, singleSection } from '../fixtures'
+import { Names, singleSection, texts, unzip } from '../fixtures'
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -115,5 +117,35 @@ describe('saving', () => {
     expect(blob.size).toBeGreaterThan(1000)
     await downloadDocx(singleSection(() => 'x'))
     expect(name).toBe('document.docx')
+  })
+})
+
+describe('lenient rendering', () => {
+  const Streamed = singleSection(() => [
+    h(Paragraph, null, () => 'Intro'),
+    h(List, null, () => [h(ListItem, null, () => 'Done'), 'half-written']),
+  ])
+
+  it('writes the rest of the document and passes the options through', async () => {
+    const onWarn = vi.fn()
+    const xml = (await unzip(await renderToBuffer(Streamed, undefined, { onWarn, prettify: true })))[
+      'word/document.xml'
+    ]!
+    expect(texts(xml)).toEqual(['Intro', 'Done'])
+    expect(xml).toContain('\n')
+    expect(onWarn).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ code: 'dropped-text' }))
+    await expect(renderToBuffer(Streamed)).rejects.toThrow('Text inside <List> must be in a <ListItem>.')
+  })
+
+  it('takes the options on every method of an instance', async () => {
+    const instance = createDocx(Streamed)
+    const options = { strict: false, onWarn: vi.fn() }
+    expect((await instance.toModel(options)).sections[0]!.children).toHaveLength(2)
+    await instance.toBlob(options)
+    await instance.toBase64(options)
+    await instance.toDocx(options)
+    expect(options.onWarn).toHaveBeenCalledTimes(4)
+    await expect(instance.toDocx()).rejects.toThrow('must be in a <ListItem>')
+    instance.unmount()
   })
 })

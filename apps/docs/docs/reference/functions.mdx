@@ -3,18 +3,29 @@ title: Functions
 description: Render once, create a live instance, write a model, and convert lengths.
 ---
 
-`props` is always a plain object of props for the document component. `options` is `WriteOptions`: `{ prettify?: boolean }`, which pretty-prints the XML inside the file.
+`props` is always a plain object of props for the document component. `options` is `RenderOptions`: the `ResolveOptions` below, plus `prettify?: boolean` from `WriteOptions`, which pretty-prints the XML inside the file.
+
+## Options
+
+`ResolveOptions` apply wherever a document is resolved: the render functions, the methods of a `DocxInstance`, and both composables. They combine `DiagnosticOptions` (`onWarn`, `strict`) and `ImageOptions` (`loadImage`, `imageTimeout`).
+
+| option         | type                                    | default |                                                                                                                           |
+| -------------- | --------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `onWarn`       | `(warning: DocxWarning) => void`        | –       | Receives every warning. Also makes the render lenient, unless `strict` is `true`. See [Errors](#errors-and-warnings).     |
+| `strict`       | `boolean`                               | –       | `true` rejects on the first warning. `false` makes the render lenient.                                                    |
+| `loadImage`    | `(src: string) => Promise<ImageSource>` | –       | Loads every string image source that is not a data URI, in place of `fetch`. See [Images](/guides/images#custom-loading). |
+| `imageTimeout` | `number`                                | `10000` | Milliseconds an image URL may take to download.                                                                           |
 
 ## Render once
 
-| function                                                               | returns                                                        |
-| ---------------------------------------------------------------------- | -------------------------------------------------------------- |
-| `renderToBuffer(document, props?, options?)`                           | `Promise<Uint8Array>`. Works in Node, workers and the browser. |
-| `renderToBlob(document, props?, options?)`                             | `Promise<Blob>` with the Word MIME type.                       |
-| `renderToBase64(document, props?, options?)`                           | `Promise<string>`                                              |
-| `renderToModel(document, props?)`                                      | `Promise<DocxModel>`. Never loads `docx`.                      |
-| `downloadDocx(document, props?, fileName = 'document.docx', options?)` | `Promise<Blob>`. Renders and saves in the browser.             |
-| `saveBlob(blob, fileName)`                                             | `void`. Saves a `Blob` through a temporary link.               |
+| function                                                               | returns                                                                  |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `renderToBuffer(document, props?, options?)`                           | `Promise<Uint8Array>`. Works in Node, workers and the browser.           |
+| `renderToBlob(document, props?, options?)`                             | `Promise<Blob>` with the Word MIME type.                                 |
+| `renderToBase64(document, props?, options?)`                           | `Promise<string>`                                                        |
+| `renderToModel(document, props?, options?)`                            | `Promise<DocxModel>`. Never loads `docx`. `options` is `ResolveOptions`. |
+| `downloadDocx(document, props?, fileName = 'document.docx', options?)` | `Promise<Blob>`. Renders and saves in the browser.                       |
+| `saveBlob(blob, fileName)`                                             | `void`. Saves a `Blob` through a temporary link.                         |
 
 `DOCX_MIME` is the MIME type, `application/vnd.openxmlformats-officedocument.wordprocessingml.document`.
 
@@ -32,11 +43,11 @@ instance.unmount()
 
 | member               | type                                                                                   |
 | -------------------- | -------------------------------------------------------------------------------------- |
-| `toModel()`          | `Promise<DocxModel>`. The resolved document, as the preview draws it.                  |
+| `toModel(options?)`  | `Promise<DocxModel>`. The resolved document, as the preview draws it.                  |
 | `toBlob(options?)`   | `Promise<Blob>`. Also calls `Document`'s `onRender` with `{ blob }`.                   |
 | `toBuffer(options?)` | `Promise<Uint8Array>`                                                                  |
 | `toBase64(options?)` | `Promise<string>`                                                                      |
-| `toDocx()`           | `Promise<Document>` from `docx`. For anything the components do not cover.             |
+| `toDocx(options?)`   | `Promise<Document>` from `docx`. For anything the components do not cover.             |
 | `onChange(listener)` | Calls `listener` after every change to the tree. Returns a function that unsubscribes. |
 | `unmount()`          | Stops the instance.                                                                    |
 
@@ -50,6 +61,45 @@ instance.unmount()
 
 `docx` is loaded with a dynamic `import('docx')` on first use and cached.
 
-## Errors
+## Errors and warnings
 
-Errors are `Error`s with a `[vue-docx-document]` prefix. Input that can be recovered from, such as text in `<Document>` or an unsupported link scheme, warns once with `console.warn` and is dropped. Input that cannot, such as an image that fails to load or a `<TableRow>` outside a `<Table>`, throws.
+Errors are `Error`s with a `[vue-docx-document]` prefix. Input that can be recovered from, such as text in `<Document>` or an unsupported link scheme, is dropped with a warning. By default, input that cannot, such as an image that fails to load or a `<TableRow>` outside a `<Table>`, throws.
+
+A lenient render leaves such input out with a warning instead and writes the rest. Pass `onWarn`, or `strict: false`, to get one. That suits documents whose structure is not under your control, such as content generated by another program or still streaming in.
+
+| options                      | misplaced elements and failed images | warnings                                    |
+| ---------------------------- | ------------------------------------ | ------------------------------------------- |
+| neither                      | throw                                | `console.warn`, once per message and render |
+| `onWarn`                     | left out                             | `onWarn`                                    |
+| `strict: false`              | left out                             | `console.warn`, once per message and render |
+| `strict: false` and `onWarn` | left out                             | `onWarn`                                    |
+| `strict: true`               | throw                                | the first one rejects the render            |
+
+A warning is a `DocxWarning`:
+
+```ts
+interface DocxWarning {
+  code: WarningCode
+  message: string
+  section?: number // 1-based number of the <Section> it happened in
+  element?: string // the component it is about, such as '<TableRow>'
+}
+```
+
+| `WarningCode`       | when                                                                                                                                          |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `misplaced-element` | An element sits where it cannot go, such as a `<Paragraph>` in a `<List>` or a `<Footnote>` in a `<Header>`. It is left out with its content. |
+| `dropped-text`      | Text sits directly in a `<Document>`, `<List>`, `<Table>` or `<TableRow>`.                                                                    |
+| `missing-section`   | The `<Document>` has no `<Section>`. An empty one stands in for it.                                                                           |
+| `image-failed`      | An image could not be loaded or read. It is left out, and its paragraph stays.                                                                |
+| `unsafe-link`       | A link's `href` is not `http`, `https`, `mailto` or `tel`. Its text is written without the link.                                              |
+| `missing-bookmark`  | A `<Link anchor>` points at no `<Bookmark>`.                                                                                                  |
+
+Match on `code` rather than on `message`, whose wording may change. When `strict: true` rejects on a warning, the error message starts with its code: `[vue-docx-document] unsafe-link: …`.
+
+```ts
+const warnings: DocxWarning[] = []
+const bytes = await renderToBuffer(GeneratedDocument, { spec }, { onWarn: (warning) => warnings.push(warning) })
+```
+
+Other invalid input, such as an unknown page size, a color that cannot be read or a bookmark name Word does not take, still throws in a lenient render.
