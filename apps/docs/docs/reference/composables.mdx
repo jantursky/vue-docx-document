@@ -27,6 +27,8 @@ const { blob, url, loading, error, update } = useDocx(InvoiceDocument, () => ({ 
 | `auto`     | `boolean` | `true`  | Render on mount and after every change. When `false`, render only when you call `update()`. |
 | `prettify` | `boolean` | –       | Pretty-print the XML inside the file, for debugging.                                        |
 
+`useDocx` also takes the [`ResolveOptions`](/reference/functions#options): `onWarn`, `strict`, `loadImage` and `imageTimeout`.
+
 | returns   | type                            |                                                                                                                           |
 | --------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | `blob`    | `Readonly<Ref<Blob \| null>>`   | The latest file.                                                                                                          |
@@ -46,6 +48,8 @@ const { model, loading, error, update } = useDocxModel(ReportDocument, () => ({ 
 | option     | type     | default | notes                                |
 | ---------- | -------- | ------- | ------------------------------------ |
 | `debounce` | `number` | `50`    | Milliseconds to wait after a change. |
+
+It also takes the [`ResolveOptions`](/reference/functions#options): `onWarn`, `strict`, `loadImage` and `imageTimeout`.
 
 | returns   | type                               |                                                              |
 | --------- | ---------------------------------- | ------------------------------------------------------------ |

@@ -16,13 +16,16 @@ import {
   writeModel,
   type DocxInstance,
   type DocxModel,
+  type DocxWarning,
   type ImageBytes,
+  type ImageSource,
   type Length,
   type Paragraph,
   type Section,
   type Table,
   type TextRun,
   type UseDocxReturn,
+  type WarningCode,
 } from '../src'
 import Report from './fixtures/Report.vue'
 
@@ -58,6 +61,15 @@ describe('public types', () => {
     expectTypeOf(useDocxModel).returns.toHaveProperty('model')
     expectTypeOf<ImageBytes['type']>().toEqualTypeOf<'png' | 'jpg' | 'gif' | 'bmp'>()
     expectTypeOf(renderToBuffer).toBeCallableWith(Report, { title: 'T', points: [] })
+  })
+
+  it('types the lenient and image options', () => {
+    const onWarn = (warning: DocxWarning) => warning
+    const loadImage = (src: string): Promise<ImageSource> => Promise.resolve(src)
+    expectTypeOf(renderToBuffer).toBeCallableWith(Report, undefined, { onWarn, strict: false, prettify: true })
+    expectTypeOf(renderToModel).toBeCallableWith(Report, undefined, { loadImage, imageTimeout: 5000 })
+    expectTypeOf(useDocxModel).toBeCallableWith(Report, undefined, { onWarn, debounce: 0 })
+    expectTypeOf<DocxWarning['code']>().toEqualTypeOf<WarningCode>()
   })
 
   it('exports the documented names', () => {

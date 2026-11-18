@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { fitImage, intrinsicSize, loadImage, MAX_IMAGE_BYTES, sniffType } from '../../src/core/images'
+import { fitImage, IMAGE_TIMEOUT, intrinsicSize, loadImage, MAX_IMAGE_BYTES, sniffType } from '../../src/core/images'
 import { PNG } from '../fixtures'
 
 const bytes = (...values: number[]) => Uint8Array.from(values)
@@ -35,6 +35,7 @@ const exifJpeg = (little: boolean, tag: number, value: number, signature = 'Exif
 
 afterEach(() => {
   vi.unstubAllGlobals()
+  vi.useRealTimers()
 })
 
 describe('sniffType', () => {
@@ -140,7 +141,10 @@ describe('loadImage', () => {
     const cache = new Map()
     expect(await loadImage('https://example.com/logo.png', cache)).toEqual(PNG)
     expect(await loadImage('https://example.com/logo.png', cache)).toEqual(PNG)
-    expect(fetch).toHaveBeenCalledExactlyOnceWith('https://example.com/logo.png', { redirect: 'error' })
+    expect(fetch).toHaveBeenCalledExactlyOnceWith('https://example.com/logo.png', {
+      redirect: 'error',
+      signal: expect.any(AbortSignal),
+    })
     await loadImage('https://example.com/logo.png', new Map())
     expect(fetch).toHaveBeenCalledTimes(2)
     await expect(loadImage('https://example.com/missing.png', new Map())).rejects.toThrow('HTTP 404')
@@ -168,5 +172,74 @@ describe('loadImage', () => {
       vi.fn(() => Promise.resolve(big)),
     )
     await expect(loadImage('https://example.com/big.png', new Map())).rejects.toThrow('larger than 20 MB')
+  })
+
+  it('gives up on a URL that takes longer than the timeout', async () => {
+    vi.useFakeTimers()
+    // Never answers, like a stalled server; only the abort ends it.
+    const hang = (_url: string, init: RequestInit) =>
+      new Promise<Response>((_resolve, reject) => {
+        init.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')))
+      })
+    vi.stubGlobal('fetch', vi.fn(hang))
+    let settled = false
+    const late = loadImage('https://example.com/slow.png', new Map()).finally(() => {
+      settled = true
+    })
+    const expectation = expect(late).rejects.toThrow(
+      `Couldn't load the image at https://example.com/slow.png: no answer in ${IMAGE_TIMEOUT} ms.`,
+    )
+    await vi.advanceTimersByTimeAsync(IMAGE_TIMEOUT - 1)
+    expect(settled).toBe(false)
+    await vi.advanceTimersByTimeAsync(1)
+    await expectation
+
+    const custom = loadImage('https://example.com/slow.png', new Map(), { imageTimeout: 50 })
+    const short = expect(custom).rejects.toThrow('no answer in 50 ms.')
+    await vi.advanceTimersByTimeAsync(50)
+    await short
+  })
+
+  it('times out a body that stops streaming', async () => {
+    vi.useFakeTimers()
+    const stall = (_url: string, init: RequestInit) => {
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(PNG.slice(0, 8))
+          init.signal?.addEventListener('abort', () => controller.error(new DOMException('aborted', 'AbortError')))
+        },
+      })
+      return Promise.resolve(new Response(body))
+    }
+    vi.stubGlobal('fetch', vi.fn(stall))
+    const pending = expect(loadImage('https://example.com/stall.png', new Map())).rejects.toThrow(
+      'no answer in 10000 ms.',
+    )
+    await vi.advanceTimersByTimeAsync(IMAGE_TIMEOUT)
+    await pending
+  })
+
+  it('loads strings through loadImage, once per cache', async () => {
+    const fetch = vi.fn(() => Promise.resolve(new Response(PNG.slice())))
+    vi.stubGlobal('fetch', fetch)
+    const loader = vi.fn((src: string) => {
+      if (src === 'asset:logo') return Promise.resolve(PNG)
+      if (src === 'asset:remote') return Promise.resolve('https://cdn.example.com/logo.png')
+      return Promise.reject(new Error('no such asset'))
+    })
+    const cache = new Map()
+    const options = { loadImage: loader }
+    expect(await loadImage('asset:logo', cache, options)).toBe(PNG)
+    expect(await loadImage('asset:logo', cache, options)).toBe(PNG)
+    expect(loader).toHaveBeenCalledOnce()
+    expect(await loadImage('asset:remote', cache, options)).toEqual(PNG)
+    expect(fetch).toHaveBeenCalledExactlyOnceWith('https://cdn.example.com/logo.png', expect.anything())
+    await expect(loadImage('asset:missing', cache, options)).rejects.toThrow(
+      `Couldn't load the image "asset:missing": no such asset`,
+    )
+    // Data URIs and bytes don't reach the loader.
+    expect(await loadImage(PNG, cache, options)).toBe(PNG)
+    expect(new TextDecoder().decode(await loadImage('data:,a', cache, options))).toBe('a')
+    expect(loader).toHaveBeenCalledTimes(3)
   })
 })

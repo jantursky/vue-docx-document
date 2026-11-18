@@ -14,7 +14,7 @@ An `<Image>` is a block when it sits directly in a block container, and inline i
 `src` takes:
 
 - a data URI,
-- an `http(s)` URL, which is fetched (20 MB at most, other schemes are rejected),
+- an `http(s)` URL, which is fetched (20 MB at most, within 10 seconds, without following redirects; other schemes are rejected),
 - a `Uint8Array`, an `ArrayBuffer` or a `Blob`.
 
 PNG, JPEG, GIF, BMP and SVG are recognised from the first bytes of the file. Set `type` (`png`, `jpg`, `gif`, `bmp` or `svg`) to override the guess.
@@ -28,7 +28,21 @@ const logo = new Uint8Array(await readFile('logo.png'))
 await renderToBuffer(InvoiceDocument, { logo })
 ```
 
-An image that cannot be loaded makes the render fail, so the document does not silently lose its logo.
+An image that cannot be loaded makes the render fail, so the document does not silently lose its logo. In a [lenient render](/reference/functions#errors-and-warnings), it is left out with an `image-failed` warning instead.
+
+## Custom loading
+
+The `loadImage` option loads every string source that is not a data URI, in place of `fetch`. Use it for files on disk, assets behind authentication, or a scheme of your own. What it returns is read like a `src`, so it can return bytes, a `Blob`, a data URI or a URL to fetch.
+
+```ts
+import { readFile } from 'node:fs/promises'
+
+await renderToBuffer(ReportDocument, props, {
+  loadImage: async (src) => new Uint8Array(await readFile(new URL(src, 'file:///srv/assets/'))),
+})
+```
+
+Each source is loaded once per render. A loader that throws fails the image like a fetch that fails. The `imageTimeout` option, 10 000 milliseconds by default, limits how long a fetched URL may take; a loader of your own sets its own limits.
 
 ## Size
 

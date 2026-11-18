@@ -35,7 +35,11 @@ export {
   renderToModel,
   saveBlob,
   type DocxInstance,
+  type RenderOptions,
 } from './core/docx'
+export type { ResolveOptions } from './core/resolve'
+export type { DiagnosticOptions, DocxWarning, WarningCode } from './core/diagnostics'
+export type { ImageOptions } from './core/images'
 export { toDocx, writeModel, type OutputType, type OutputTypes, type WriteOptions } from './core/write'
 export { toPoints } from './core/units'
 export type * from './core/model'

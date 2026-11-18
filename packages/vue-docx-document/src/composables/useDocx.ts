@@ -10,15 +10,14 @@ import {
   type Ref,
 } from 'vue'
 
-import { createDocx, type DocxInstance } from '../core/docx'
-import type { WriteOptions } from '../core/write'
+import { createDocx, type DocxInstance, type RenderOptions } from '../core/docx'
 
 type Props = Record<string, unknown>
 
 /** How long a replaced object URL stays valid, so a download that's still reading it can finish. */
 const REVOKE_DELAY = 10_000
 
-export interface UseDocxOptions extends WriteOptions {
+export interface UseDocxOptions extends RenderOptions {
   /** Milliseconds to wait after a change before rendering again. Default 300. */
   debounce?: number
   /** Render on mount and after every change. Off: render only when you call `update()`. */
